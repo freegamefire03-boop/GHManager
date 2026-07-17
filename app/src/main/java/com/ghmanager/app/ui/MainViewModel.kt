@@ -12,6 +12,7 @@ import com.ghmanager.app.data.remote.model.RenameRepoRequest
 import com.ghmanager.app.data.repository.GithubRepository
 import com.ghmanager.app.data.repository.HistoryRepository
 import com.ghmanager.app.data.repository.TokenRepository
+import com.ghmanager.app.security.SaveLocationStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,11 +23,27 @@ data class UiMessage(val text: String, val isError: Boolean)
 class MainViewModel(
     private val tokenRepo: TokenRepository,
     private val githubRepo: GithubRepository,
-    private val historyRepo: HistoryRepository
+    private val historyRepo: HistoryRepository,
+    private val saveLocationStore: SaveLocationStore
 ) : ViewModel() {
 
     val tokens = tokenRepo.tokens
     val activeTokenId = tokenRepo.activeTokenId
+
+    private val _defaultSaveUri = MutableStateFlow<String?>(null)
+    val defaultSaveUri: StateFlow<String?> = _defaultSaveUri.asStateFlow()
+
+    private val _needsSaveLocation = MutableStateFlow(false)
+    val needsSaveLocation: StateFlow<Boolean> = _needsSaveLocation.asStateFlow()
+
+    private var pendingCloneRepo: GithubRepo? = null
+
+    private val _pendingCloneWithUri = MutableStateFlow<Pair<String, GithubRepo>?>(null)
+    val pendingCloneWithUri: StateFlow<Pair<String, GithubRepo>?> = _pendingCloneWithUri.asStateFlow()
+
+    fun consumePendingCloneWithUri() {
+        _pendingCloneWithUri.value = null
+    }
 
     private val _existingRepos = MutableStateFlow<List<GithubRepo>>(emptyList())
     val existingRepos: StateFlow<List<GithubRepo>> = _existingRepos.asStateFlow()
@@ -50,12 +67,31 @@ class MainViewModel(
 
     init {
         viewModelScope.launch {
+            _defaultSaveUri.value = saveLocationStore.getDefaultUri()
             tokenRepo.refresh()
             applyActiveToken()
             tokenRepo.activeTokenId.collect {
                 // reactive: when active token changes, reload
             }
         }
+    }
+
+    fun onSaveLocationResolved(uri: String) {
+        viewModelScope.launch {
+            saveLocationStore.setDefaultUri(uri)
+            _defaultSaveUri.value = uri
+            _needsSaveLocation.value = false
+            pendingCloneRepo?.let { repo ->
+                val toClone = repo
+                pendingCloneRepo = null
+                requestClone(toClone)
+            }
+        }
+    }
+
+    fun cancelSaveLocation() {
+        _needsSaveLocation.value = false
+        pendingCloneRepo = null
     }
 
     fun activeUsername(): String = tokenRepo.getActiveTokenEntity()?.username ?: ""
@@ -271,40 +307,131 @@ class MainViewModel(
         }
     }
 
+    /**
+     * Entry point for "Clone to Phone". If a default save location is set,
+     * clones immediately. Otherwise it asks the UI to prompt the user for a
+     * folder (first run), which is then persisted and the clone continues.
+     */
     fun cloneRepo(repo: GithubRepo) {
-        viewModelScope.launch {
-            _isBusy.value = true
-            val ok = downloadRepoZip(repo.cloneUrl, repo.name)
-            if (ok) {
-                historyRepo.logAction(ActionLogEntity(repo.fullName, "CLONE", tokenId = tokenRepo.activeTokenId.value ?: "", success = true))
-                showMessage("Cloned '${repo.name}' to Downloads/GHManager", false)
-            } else {
-                showMessage("Clone failed: could not write to storage", true)
-            }
-            _isBusy.value = false
+        val uri = _defaultSaveUri.value
+        if (uri == null) {
+            pendingCloneRepo = repo
+            _needsSaveLocation.value = true
+            return
         }
+        requestClone(repo)
     }
 
-    private suspend fun downloadRepoZip(cloneUrl: String, repoName: String): Boolean {
-        return try {
-            val zipUrl = cloneUrl.removeSuffix(".git") + "/archive/refs/heads/main.zip"
-            val client = okhttp3.OkHttpClient()
-            val req = okhttp3.Request.Builder().url(zipUrl).build()
-            val resp = client.newCall(req).execute()
-            if (!resp.isSuccessful) return false
-            val dir = android.os.Environment.getExternalStoragePublicDirectory(
-                android.os.Environment.DIRECTORY_DOWNLOADS
+    /**
+     * Downloads the repo archive and extracts it into the SAF tree [treeUri].
+     * Returns the target folder display name on success, or null on failure.
+     * The extraction works against a DocumentFile tree, so no raw file-path
+     * permissions are required.
+     */
+    suspend fun cloneRepoToUri(context: android.content.Context, repo: GithubRepo, treeUri: String): String? {
+        _isBusy.value = true
+        val result = runCatching {
+            val zipBytes = downloadRepoZipBytes(repo.cloneUrl)
+            extractZipIntoTree(context, treeUri, zipBytes, repo.name)
+        }.onSuccess {
+            historyRepo.logAction(
+                ActionLogEntity(
+                    repo.fullName, "CLONE",
+                    tokenId = tokenRepo.activeTokenId.value ?: "", success = true
+                )
             )
-            val target = java.io.File(dir, "GHManager")
-            if (!target.exists()) target.mkdirs()
-            val out = java.io.File(target, "$repoName.zip")
-            resp.body?.byteStream()?.use { input ->
-                out.outputStream().use { output -> input.copyTo(output) }
-            }
-            true
-        } catch (e: Exception) {
-            false
+            showMessage("Cloned '${repo.name}' to selected folder", false)
+        }.onFailure {
+            historyRepo.logAction(
+                ActionLogEntity(
+                    repo.fullName, "CLONE",
+                    tokenId = tokenRepo.activeTokenId.value ?: "", success = false,
+                    message = it.message
+                )
+            )
+            showMessage("Clone failed: ${it.message ?: "unknown error"}", true)
         }
+        _isBusy.value = false
+        return result.getOrNull()
+    }
+
+    private fun requestClone(repo: GithubRepo) {
+        // Cloning with a known URI is orchestrated by the UI (which holds a
+        // Context for SAF extraction). Emit an event the UI observes.
+        val uri = _defaultSaveUri.value ?: return
+        _pendingCloneWithUri.value = uri to repo
+    }
+
+    private suspend fun downloadRepoZipBytes(cloneUrl: String): ByteArray {
+        val zipUrl = cloneUrl.removeSuffix(".git") + "/archive/refs/heads/main.zip"
+        val client = okhttp3.OkHttpClient()
+        val req = okhttp3.Request.Builder().url(zipUrl).build()
+        val resp = client.newCall(req).execute()
+        if (!resp.isSuccessful) throw Exception("HTTP ${resp.code}")
+        return resp.body?.bytes()
+            ?: throw Exception("Empty response body")
+    }
+
+    /**
+     * Extracts the downloaded zip [bytes] into the SAF tree [treeUri], under a
+     * subfolder named [repoName]. Uses DocumentFile so no raw filesystem
+     * permission is needed. Returns the created folder's display name.
+     */
+    private fun extractZipIntoTree(
+        context: android.content.Context,
+        treeUri: String,
+        bytes: ByteArray,
+        repoName: String
+    ): String {
+        val root = androidx.documentfile.provider.DocumentFile.fromTreeUri(context, android.net.Uri.parse(treeUri))
+            ?: throw Exception("Invalid save folder")
+        val folderName = repoName
+        var target = root.findFile(folderName)
+        if (target != null && target.isDirectory) {
+            // Avoid collisions by suffixing
+            var i = 1
+            while (target != null && target.isDirectory) {
+                target = root.findFile("${folderName}_$i")
+                if (target == null) target = root.createDirectory("${folderName}_$i")
+                i++
+            }
+        } else {
+            target = root.createDirectory(folderName)
+        }
+        val targetFolder = target ?: throw Exception("Could not create folder")
+
+        java.util.zip.ZipInputStream(bytes.inputStream()).use { zis ->
+            var entry = zis.nextEntry
+            while (entry != null) {
+                // Strip the top-level archive folder (e.g. repo-main/)
+                val path = entry.name.substringAfter("/")
+                if (path.isBlank()) { entry = zis.nextEntry; continue }
+                if (entry.isDirectory) {
+                    var cursor = targetFolder
+                    val parts = path.trimEnd('/').split("/")
+                    for (p in parts) {
+                        cursor = cursor.findFile(p) ?: cursor.createDirectory(p)!!
+                    }
+                } else {
+                    val parts = path.split("/")
+                    var parent = targetFolder
+                    for (i in 0 until parts.size - 1) {
+                        parent = parent.findFile(parts[i]) ?: parent.createDirectory(parts[i])!!
+                    }
+                    val fileName = parts.last()
+                    val existing = parent.findFile(fileName)
+                    val file = existing ?: parent.createFile("application/octet-stream", fileName)
+                    file?.uri?.let { uri ->
+                        context.contentResolver.openOutputStream(uri)?.use { os ->
+                            zis.copyTo(os)
+                        }
+                    }
+                }
+                zis.closeEntry()
+                entry = zis.nextEntry
+            }
+        }
+        return targetFolder.name ?: folderName
     }
 
     // ---- Messaging ----

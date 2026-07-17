@@ -18,8 +18,10 @@ layouts, no custom theming) per the Core-Logic-First approach.
 - **Tab 1 — Create Repo**: name, description, public/private, auto-init README.
 - **Tab 2 — History**: local log of repos created through this app (per token).
 - **Tab 3 — Existing Repos**: all repos on the active account via the GitHub API.
-- **Repo actions (bottom sheet)**: Clone to phone (zip download), change
-  visibility, rename, fork, transfer, delete. Code editing / file upload omitted.
+- **Repo actions (bottom sheet)**: Clone to phone (downloads the repo archive
+  ZIP and extracts it into a user-chosen folder via the Storage Access
+  Framework), change visibility, rename, fork, transfer, delete. Code editing /
+  file upload omitted.
 - **Bulletproof error handling**: every API call parses the HTTP/API response;
   token scope/permission errors are detected and reported explicitly
   (e.g. "requires 'delete_repo' scope").
@@ -51,7 +53,8 @@ app/src/main/java/com/ghmanager/app/
 ```
 
 ## Known Issues / TODO
-- Clone downloads a zip to `Downloads/GHManager` (not a full git clone).
-- Settings screen is currently a dialog; no separate route yet.
+- Clone saves an **extracted folder** (not a full git clone). The default save
+  location is chosen on first clone (SAF picker) and can be changed in Settings.
+- Settings is a dialog (no separate route yet).
 - No unit/instrumentation tests yet.
 - Token scope errors are inferred heuristically from response text.

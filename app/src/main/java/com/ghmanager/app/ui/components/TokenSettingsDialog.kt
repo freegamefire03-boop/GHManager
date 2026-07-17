@@ -22,7 +22,12 @@ import com.ghmanager.app.ui.MainViewModel
 import kotlinx.coroutines.launch
 
 @Composable
-fun TokenSettingsDialog(viewModel: MainViewModel, onDismiss: () -> Unit) {
+fun TokenSettingsDialog(
+    viewModel: MainViewModel,
+    defaultSaveUri: String?,
+    onChangeSaveLocation: () -> Unit,
+    onDismiss: () -> Unit
+) {
     val tokens by viewModel.tokens.collectAsStateWithLifecycle()
     val isBusy by viewModel.isBusy.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
@@ -52,6 +57,17 @@ fun TokenSettingsDialog(viewModel: MainViewModel, onDismiss: () -> Unit) {
                 OutlinedTextField(value = token, onValueChange = { token = it },
                     label = { Text("GitHub PAT") }, modifier = Modifier.fillMaxWidth())
                 if (isBusy) Text("Validating token…", modifier = Modifier.padding(top = 4.dp))
+
+                androidx.compose.material3.HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                Text("Clone save location:", modifier = Modifier.padding(bottom = 4.dp))
+                Text(
+                    defaultSaveUri?.let { android.net.Uri.parse(it).lastPathSegment ?: it }
+                        ?: "Not set — you'll be asked on first clone",
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+                Button(onClick = onChangeSaveLocation, modifier = Modifier.fillMaxWidth()) {
+                    Text("Change default save location")
+                }
             }
         },
         confirmButton = {

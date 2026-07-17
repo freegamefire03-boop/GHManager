@@ -14,3 +14,11 @@ All notable changes to this project are logged here, newest first.
 - Added: Mid-process token-switch warning dialog.
 - Fixed: Build issues — added android.useAndroidX, lifecycle-runtime-compose dep, fixed RenameRepoRequest/ActionLogEntity constructor usage.
 - Build verified: `gradlew assembleDebug` succeeds.
+
+## 2026-07-17 (v0.2.0-alpha)
+- Changed: "Clone to Phone" now downloads the GitHub archive ZIP and **extracts it** into the chosen folder (previously only saved the zip).
+- Added: First-run save-location picker via Android Storage Access Framework (SAF). The chosen folder URI is persisted as the default and granted persistent read/write permission.
+- Added: Settings option to change the default clone save location at any time.
+- Added: SaveLocationStore (encrypted) to persist the default save directory URI.
+- Added: `androidx.documentfile` dependency for SAF tree extraction.
+- Build verified: `gradlew assembleDebug` succeeds. Version bumped to 0.2.0-alpha (versionCode 2).

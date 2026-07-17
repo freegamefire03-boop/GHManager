@@ -7,6 +7,7 @@ import com.ghmanager.app.data.repository.GithubRepository
 import com.ghmanager.app.data.repository.HistoryRepository
 import com.ghmanager.app.data.repository.TokenRepository
 import com.ghmanager.app.security.TokenStore
+import com.ghmanager.app.security.SaveLocationStore
 import com.ghmanager.app.ui.MainViewModel
 import org.koin.android.ext.koin.androidContext
 import org.koin.androidx.viewmodel.dsl.viewModel
@@ -25,9 +26,10 @@ val appModule = module {
     }
 
     single { TokenStore(androidContext()) }
+    single { SaveLocationStore(androidContext()) }
     single { GithubRepository() }
     single { HistoryRepository(get()) }
     single { TokenRepository(get()) }
 
-    viewModel { MainViewModel(get(), get(), get()) }
+    viewModel { MainViewModel(get(), get(), get(), get()) }
 }

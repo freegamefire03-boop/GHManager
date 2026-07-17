@@ -1,6 +1,10 @@
 package com.ghmanager.app.ui
 
+import android.content.Context
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -12,6 +16,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.Tab
@@ -28,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ghmanager.app.ui.screens.CreateRepoTab
@@ -44,12 +50,33 @@ fun MainScreen(viewModel: MainViewModel = koinViewModel()) {
     val message by viewModel.message.collectAsStateWithLifecycle()
     val showWarning by viewModel.showSwitchWarning.collectAsStateWithLifecycle()
     val isBusy by viewModel.isBusy.collectAsStateWithLifecycle()
+    val needsSaveLocation by viewModel.needsSaveLocation.collectAsStateWithLifecycle()
+    val pendingCloneWithUri by viewModel.pendingCloneWithUri.collectAsStateWithLifecycle()
+    val defaultSaveUri by viewModel.defaultSaveUri.collectAsStateWithLifecycle()
+
+    val context = LocalContext.current
 
     var tabIndex by remember { mutableIntStateOf(0) }
     var tokenMenuOpen by remember { mutableStateOf(false) }
     var settingsOpen by remember { mutableStateOf(false) }
 
     val activeToken = tokens.firstOrNull { it.id == activeTokenId }
+
+    val treeLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        if (uri != null) {
+            // Persist access so we can write on future launches
+            context.contentResolver.takePersistableUriPermission(
+                uri,
+                android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                    android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            )
+            viewModel.onSaveLocationResolved(uri.toString())
+        } else {
+            viewModel.cancelSaveLocation()
+        }
+    }
 
     LaunchedEffect(Unit) { viewModel.init() }
 
@@ -60,12 +87,24 @@ fun MainScreen(viewModel: MainViewModel = koinViewModel()) {
         }
     }
 
+    // First-run: ask for a save folder before cloning
+    LaunchedEffect(needsSaveLocation) {
+        if (needsSaveLocation) treeLauncher.launch(null)
+    }
+
+    // Default save location already set: perform the clone into it
+    LaunchedEffect(pendingCloneWithUri) {
+        pendingCloneWithUri?.let { (uri, repo) ->
+            viewModel.cloneRepoToUri(context, repo, uri)
+            viewModel.consumePendingCloneWithUri()
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("GitHub Manager") },
                 actions = {
-                    // Global token switcher
                     Box {
                         TextButton(onClick = { tokenMenuOpen = true }) {
                             Text(activeToken?.name ?: "No token")
@@ -100,7 +139,7 @@ fun MainScreen(viewModel: MainViewModel = koinViewModel()) {
         }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            androidx.compose.foundation.layout.Column {
+            Column {
                 TabRow(selectedTabIndex = tabIndex) {
                     Tab(selected = tabIndex == 0, onClick = { tabIndex = 0 }, text = { Text("Create Repo") })
                     Tab(selected = tabIndex == 1, onClick = { tabIndex = 1 }, text = { Text("History") })
@@ -113,13 +152,15 @@ fun MainScreen(viewModel: MainViewModel = koinViewModel()) {
                 }
             }
 
-            // Snackbar for messages
             message?.let {
-                Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = androidx.compose.ui.Alignment.BottomCenter) {
+                Box(
+                    modifier = Modifier.fillMaxSize().padding(16.dp),
+                    contentAlignment = Alignment.BottomCenter
+                ) {
                     Snackbar(
                         containerColor = if (it.isError)
-                            androidx.compose.material3.MaterialTheme.colorScheme.errorContainer
-                        else androidx.compose.material3.MaterialTheme.colorScheme.primaryContainer
+                            MaterialTheme.colorScheme.errorContainer
+                        else MaterialTheme.colorScheme.primaryContainer
                     ) {
                         Text(it.text)
                     }
@@ -141,7 +182,14 @@ fun MainScreen(viewModel: MainViewModel = koinViewModel()) {
             }
 
             if (settingsOpen) {
-                TokenSettingsDialog(viewModel = viewModel, onDismiss = { settingsOpen = false })
+                TokenSettingsDialog(
+                    viewModel = viewModel,
+                    defaultSaveUri = defaultSaveUri,
+                    onChangeSaveLocation = {
+                        treeLauncher.launch(null)
+                    },
+                    onDismiss = { settingsOpen = false }
+                )
             }
         }
     }
