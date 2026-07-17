@@ -13,10 +13,12 @@ import com.ghmanager.app.data.repository.GithubRepository
 import com.ghmanager.app.data.repository.HistoryRepository
 import com.ghmanager.app.data.repository.TokenRepository
 import com.ghmanager.app.security.SaveLocationStore
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class UiMessage(val text: String, val isError: Boolean)
 
@@ -356,9 +358,16 @@ class MainViewModel(
     suspend fun cloneRepoToUri(context: android.content.Context, repo: GithubRepo, treeUri: String): String? {
         _isBusy.value = true
         val result = runCatching {
-            val token = tokenRepo.activeTokenId.value?.let { tokenRepo.getPlainToken(it) }
-            val zipBytes = downloadRepoZipBytes(repo, token)
-            extractZipIntoTree(context, treeUri, zipBytes, repo.name)
+            withContext(Dispatchers.IO) {
+                val token = tokenRepo.activeTokenId.value?.let { tokenRepo.getPlainToken(it) }
+                val zipFile = java.io.File(context.cacheDir, "clone_${System.currentTimeMillis()}.zip")
+                try {
+                    downloadRepoZipToFile(repo, token, zipFile)
+                    extractZipFileIntoTree(context, treeUri, zipFile, repo.name)
+                } finally {
+                    zipFile.delete()
+                }
+            }
         }.onSuccess {
             historyRepo.logAction(
                 ActionLogEntity(
@@ -388,90 +397,128 @@ class MainViewModel(
         _pendingCloneWithUri.value = uri to repo
     }
 
-    private fun downloadRepoZipBytes(repo: GithubRepo, token: String?): ByteArray {
-        // Prefer the GitHub API tarball/zipball endpoint: it resolves the
-        // default branch automatically and works for private repos with auth.
+    /**
+     * Downloads the repo archive from the GitHub API zipball endpoint and
+     * STREAMS it to [destZipFile] (never buffers the whole archive in memory).
+     * Uses the bare /zipball endpoint so GitHub resolves the true default
+     * branch itself — no hardcoded "main"/"master" guessing. Works for private
+     * repos with a token. Validates the file is a real zip before returning.
+     */
+    private fun downloadRepoZipToFile(repo: GithubRepo, token: String?, destZipFile: java.io.File) {
         val owner = repo.owner?.login ?: repo.fullName.substringBefore("/")
-        val branch = repo.defaultBranch.ifBlank { "" }
-        val apiZipUrl = buildString {
-            append("https://api.github.com/repos/")
-            append(owner).append("/").append(repo.name)
-            append("/zipball")
-            if (branch.isNotBlank()) append("/").append(branch)
-        }
+        // Bare /zipball: GitHub resolves the default branch automatically.
+        val apiZipUrl = "https://api.github.com/repos/$owner/${repo.name}/zipball"
 
         val client = okhttp3.OkHttpClient.Builder()
             .followRedirects(true)
+            .followSslRedirects(true)
             .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-            .readTimeout(120, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(5, java.util.concurrent.TimeUnit.MINUTES)
+            .writeTimeout(5, java.util.concurrent.TimeUnit.MINUTES)
             .build()
 
         val builder = okhttp3.Request.Builder()
             .url(apiZipUrl)
             .addHeader("Accept", "application/vnd.github+json")
             .addHeader("X-GitHub-Api-Version", "2022-11-28")
+            // GitHub rejects API calls without a User-Agent.
+            .addHeader("User-Agent", "GHManager-Android")
         if (!token.isNullOrBlank()) {
             builder.addHeader("Authorization", "Bearer $token")
         }
 
-        val resp = client.newCall(builder.build()).execute()
-        resp.use {
-            if (!it.isSuccessful) {
-                throw Exception("Download failed: HTTP ${it.code}${if (it.code == 404) " (repo/branch not found or no access)" else ""}")
+        client.newCall(builder.build()).execute().use { resp ->
+            if (!resp.isSuccessful) {
+                throw Exception(
+                    "Download failed: HTTP ${resp.code}" +
+                        when (resp.code) {
+                            404 -> " (repo not found or no access)"
+                            401, 403 -> " (token invalid or missing scope for this repo)"
+                            else -> ""
+                        }
+                )
             }
-            return it.body?.bytes() ?: throw Exception("Empty response body")
+            val body = resp.body ?: throw Exception("Empty response body")
+            body.byteStream().use { input ->
+                destZipFile.outputStream().buffered().use { out ->
+                    input.copyTo(out)
+                }
+            }
+        }
+
+        // A valid zip must exist, be non-trivial, and start with the "PK" signature.
+        if (!destZipFile.exists() || destZipFile.length() < 4L) {
+            throw Exception("Downloaded file is empty or missing")
+        }
+        destZipFile.inputStream().use { fis ->
+            val sig = ByteArray(2)
+            fis.read(sig)
+            if (sig[0] != 'P'.code.toByte() || sig[1] != 'K'.code.toByte()) {
+                throw Exception("Downloaded file is not a valid zip (server returned an error page or a truncated download)")
+            }
         }
     }
 
     /**
-     * Extracts the downloaded zip [bytes] into the SAF tree [treeUri], under a
+     * Extracts the downloaded [zipFile] into the SAF tree [treeUri], under a
      * subfolder named [repoName]. Uses DocumentFile so no raw filesystem
-     * permission is needed. Returns the created folder's display name.
+     * permission is needed. Includes zip-slip protection. Returns the created
+     * folder's display name.
      */
-    private fun extractZipIntoTree(
+    private fun extractZipFileIntoTree(
         context: android.content.Context,
         treeUri: String,
-        bytes: ByteArray,
+        zipFile: java.io.File,
         repoName: String
     ): String {
         val root = androidx.documentfile.provider.DocumentFile.fromTreeUri(context, android.net.Uri.parse(treeUri))
             ?: throw Exception("Invalid save folder")
-        val folderName = repoName
-        var target = root.findFile(folderName)
-        if (target != null && target.isDirectory) {
-            // Avoid collisions by suffixing
-            var i = 1
-            while (target != null && target.isDirectory) {
-                target = root.findFile("${folderName}_$i")
-                if (target == null) target = root.createDirectory("${folderName}_$i")
-                i++
-            }
-        } else {
-            target = root.createDirectory(folderName)
-        }
-        val targetFolder = target ?: throw Exception("Could not create folder")
 
-        java.util.zip.ZipInputStream(bytes.inputStream()).use { zis ->
+        // Pick a non-colliding folder name (repoName, repoName_1, repoName_2, ...).
+        var targetFolder = if (root.findFile(repoName) == null) {
+            root.createDirectory(repoName)
+        } else {
+            var i = 1
+            var made = root.findFile("${repoName}_$i")
+            while (made != null) {
+                i++
+                made = root.findFile("${repoName}_$i")
+            }
+            root.createDirectory("${repoName}_$i")
+        } ?: throw Exception("Could not create folder")
+
+        java.util.zip.ZipInputStream(zipFile.inputStream().buffered()).use { zis ->
             var entry = zis.nextEntry
             while (entry != null) {
-                // Strip the top-level archive folder (e.g. repo-main/)
-                val path = entry.name.substringAfter("/")
-                if (path.isBlank()) { entry = zis.nextEntry; continue }
+                // Strip the top-level archive folder (e.g. repo-<sha>/).
+                val rawName = entry.name
+                val slash = rawName.indexOf('/')
+                val path = if (slash >= 0) rawName.substring(slash + 1) else ""
+                if (path.isBlank()) { zis.closeEntry(); entry = zis.nextEntry; continue }
+
+                // Zip-slip guard: reject any entry that tries to escape the target.
+                val normalized = path.replace('\\', '/')
+                if (normalized.split("/").any { it == ".." }) {
+                    throw Exception("Unsafe zip entry rejected: ${entry.name}")
+                }
+
                 if (entry.isDirectory) {
                     var cursor = targetFolder
-                    val parts = path.trimEnd('/').split("/")
-                    for (p in parts) {
+                    for (p in normalized.trimEnd('/').split("/")) {
+                        if (p.isBlank()) continue
                         cursor = cursor.findFile(p) ?: cursor.createDirectory(p)!!
                     }
                 } else {
-                    val parts = path.split("/")
+                    val parts = normalized.split("/")
                     var parent = targetFolder
                     for (i in 0 until parts.size - 1) {
+                        if (parts[i].isBlank()) continue
                         parent = parent.findFile(parts[i]) ?: parent.createDirectory(parts[i])!!
                     }
                     val fileName = parts.last()
-                    val existing = parent.findFile(fileName)
-                    val file = existing ?: parent.createFile("application/octet-stream", fileName)
+                    // Overwrite: delete any stale file so we never append/corrupt.
+                    parent.findFile(fileName)?.delete()
+                    val file = parent.createFile("application/octet-stream", fileName)
                     file?.uri?.let { uri ->
                         context.contentResolver.openOutputStream(uri)?.use { os ->
                             zis.copyTo(os)
@@ -482,7 +529,7 @@ class MainViewModel(
                 entry = zis.nextEntry
             }
         }
-        return targetFolder.name ?: folderName
+        return targetFolder.name ?: repoName
     }
 
     // ---- Messaging ----

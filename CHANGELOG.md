@@ -2,6 +2,14 @@
 
 All notable changes to this project are logged here, newest first.
 
+## 2026-07-17 (v0.3.1-alpha — clone reliability fixes)
+- Fixed: Clone/download could hang forever or fail silently — the network download and zip extraction now run on `Dispatchers.IO` instead of the main thread (was risking ANR / NetworkOnMainThreadException).
+- Fixed: The repo archive is now streamed straight to a cache file instead of being buffered fully in memory via `.bytes()` (prevents OOM / hangs on larger repos). Temp file is deleted after extraction.
+- Fixed: Clone now uses the bare `/zipball` endpoint so GitHub resolves the true default branch itself — removes the hardcoded-branch 404 (e.g. `master` repos).
+- Added: User-Agent header on the zipball request (GitHub can reject API calls without one); added a 5-minute write timeout; validate the download is a real zip (`PK` signature) before extracting; clearer HTTP 401/403/404 error messages.
+- Added: Zip-slip protection — entries containing `..` path segments are rejected.
+- Fixed: Folder collision handling rewritten (clean `name`, `name_1`, `name_2`… selection) and existing files are now deleted before write instead of being appended to.
+
 ## 2026-07-17 (note banner reposition/redesign)
 - Changed: The action-result note now appears at the TOP of the content area, directly below the tab bar (no longer covers the tab names or floats at the bottom). Redesigned as a rounded banner card with an "NOTE"/"ERROR" label and a close (X) icon on their own row, and the message text on a separate scrollable row — so the dismiss control no longer overlaps the text.
 
