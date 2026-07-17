@@ -7,20 +7,20 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -30,7 +30,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Snackbar
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -46,6 +46,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ghmanager.app.ui.screens.CreateRepoTab
@@ -174,6 +175,15 @@ fun MainScreen(viewModel: MainViewModel = koinViewModel()) {
                         text = { Text("REPOS") }
                     )
                 }
+
+                message?.let {
+                    NoteBanner(
+                        text = it.text,
+                        isError = it.isError,
+                        onDismiss = { viewModel.clearMessage() }
+                    )
+                }
+
                 HorizontalPager(
                     state = pagerState,
                     modifier = Modifier.fillMaxSize()
@@ -182,49 +192,6 @@ fun MainScreen(viewModel: MainViewModel = koinViewModel()) {
                         0 -> CreateRepoTab(viewModel)
                         1 -> HistoryTab(viewModel)
                         2 -> ExistingReposTab(viewModel)
-                    }
-                }
-            }
-
-            message?.let {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .navigationBarsPadding()
-                        .padding(16.dp),
-                    contentAlignment = Alignment.BottomCenter
-                ) {
-                    val container = if (it.isError)
-                        MaterialTheme.colorScheme.errorContainer
-                    else MaterialTheme.colorScheme.primaryContainer
-                    val onContainer = if (it.isError)
-                        MaterialTheme.colorScheme.onErrorContainer
-                    else MaterialTheme.colorScheme.onPrimaryContainer
-
-                    Snackbar(
-                        modifier = Modifier.fillMaxWidth(),
-                        containerColor = container,
-                        contentColor = onContainer,
-                        action = {
-                            TextButton(onClick = { viewModel.clearMessage() }) {
-                                Text("Dismiss", color = onContainer)
-                            }
-                        }
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = it.text,
-                                color = onContainer,
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .heightIn(max = 200.dp)
-                                    .verticalScroll(rememberScrollState())
-                            )
-                        }
                     }
                 }
             }
@@ -253,6 +220,62 @@ fun MainScreen(viewModel: MainViewModel = koinViewModel()) {
                     onDismiss = { settingsOpen = false }
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun NoteBanner(
+    text: String,
+    isError: Boolean,
+    onDismiss: () -> Unit
+) {
+    val container = if (isError)
+        MaterialTheme.colorScheme.errorContainer
+    else MaterialTheme.colorScheme.primaryContainer
+    val onContainer = if (isError)
+        MaterialTheme.colorScheme.onErrorContainer
+    else MaterialTheme.colorScheme.onPrimaryContainer
+
+    Surface(
+        color = container,
+        contentColor = onContainer,
+        tonalElevation = 3.dp,
+        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 6.dp)
+    ) {
+        Column(modifier = Modifier.padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = if (isError) "ERROR" else "NOTE",
+                    color = onContainer,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "Dismiss",
+                        tint = onContainer,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+            Text(
+                text = text,
+                color = onContainer,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 160.dp)
+                    .verticalScroll(rememberScrollState())
+            )
         }
     }
 }

@@ -2,6 +2,9 @@
 
 All notable changes to this project are logged here, newest first.
 
+## 2026-07-17 (note banner reposition/redesign)
+- Changed: The action-result note now appears at the TOP of the content area, directly below the tab bar (no longer covers the tab names or floats at the bottom). Redesigned as a rounded banner card with an "NOTE"/"ERROR" label and a close (X) icon on their own row, and the message text on a separate scrollable row — so the dismiss control no longer overlaps the text.
+
 ## 2026-07-17 (repo tags + open published page)
 - Added: Color-coded tags on the right of each repo title instead of stacked text: green "PUB" (public), red "PRIV" (private), orange "PAGES" (GitHub Pages published).
 - Added: "?" help icon (left of Refresh) on the REPOS tab that opens a legend explaining each tag.
