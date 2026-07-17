@@ -19,8 +19,10 @@ layouts, no custom theming) per the Core-Logic-First approach.
 - **Tab 1 — Create Repo**: name, description, public/private, auto-init README.
 - **Tab 2 — History**: local log of repos created through this app (per token).
 - **Tab 3 — REPOS**: all repos on the active account via the GitHub API, shown
-  as a clean name-only list, with a Refresh button to re-fetch.
-- **Repo actions (bottom sheet)**: Open in browser, Clone to phone (downloads
+  as a clean name-only list with color-coded tags (PUB/PRIV/PAGES) on the right,
+  a "?" legend explaining the tags, and a Refresh button to re-fetch.
+- **Repo actions (bottom sheet)**: Open in browser, Open published Pages site
+  (when Pages is live), Clone to phone (downloads
   the repo archive ZIP and extracts it into a user-chosen folder via the Storage
   Access Framework), Publish to GitHub Pages (via API, using the repo's default
   branch), change visibility, rename, fork, transfer, and delete (with a

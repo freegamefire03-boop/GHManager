@@ -8,6 +8,8 @@ data class GithubRepo(
     val description: String? = null,
     @SerializedName("private") val isPrivate: Boolean = false,
     val fork: Boolean = false,
+    @SerializedName("has_pages") val hasPages: Boolean = false,
+    @SerializedName("homepage") val homepage: String? = null,
     @SerializedName("html_url") val htmlUrl: String = "",
     @SerializedName("clone_url") val cloneUrl: String = "",
     @SerializedName("ssh_url") val sshUrl: String = "",

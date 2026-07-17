@@ -2,6 +2,12 @@
 
 All notable changes to this project are logged here, newest first.
 
+## 2026-07-17 (repo tags + open published page)
+- Added: Color-coded tags on the right of each repo title instead of stacked text: green "PUB" (public), red "PRIV" (private), orange "PAGES" (GitHub Pages published).
+- Added: "?" help icon (left of Refresh) on the REPOS tab that opens a legend explaining each tag.
+- Added: "Open Published Page" action in the repo sheet (shown only for repos with Pages published); opens the repo's homepage URL if set, otherwise the default `https://<owner>.github.io/<repo>/`.
+- Changed: GithubRepo model now includes `has_pages` and `homepage` from the API.
+
 ## 2026-07-17 (clone fix)
 - Fixed: "Clone to Phone" always failed on repos whose default branch isn't `main` (e.g. `master`) because the download URL hardcoded `main` → HTTP 404. It now downloads via the GitHub API zipball endpoint, which resolves the default branch automatically.
 - Fixed: Clone could not fetch private repos (the download used no auth). It now sends the active token's `Authorization: Bearer` header, so private repos clone too. Errors now report the HTTP code (with a hint on 404).

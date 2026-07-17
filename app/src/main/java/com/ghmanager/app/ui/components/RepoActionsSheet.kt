@@ -61,6 +61,20 @@ fun RepoActionsSheet(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
             ) { Text("Open in Browser") }
 
+            if (repo.hasPages) {
+                OutlinedButton(
+                    onClick = {
+                        val owner = repo.owner?.login ?: repo.fullName.substringBefore("/")
+                        val pagesUrl = repo.homepage?.takeIf { it.isNotBlank() && it.startsWith("http") }
+                            ?: "https://$owner.github.io/${repo.name}/"
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(pagesUrl))
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        context.startActivity(intent)
+                    },
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                ) { Text("Open Published Page") }
+            }
+
             ActionButton("Clone to Phone (download zip)") { viewModel.cloneRepo(repo); onDismiss() }
             ActionButton("Publish (GitHub Pages)") { viewModel.publishRepo(repo); onDismiss() }
             ActionButton(if (repo.isPrivate) "Make Public" else "Make Private") {
