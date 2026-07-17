@@ -1,0 +1,45 @@
+# Build outputs
+.gradle/
+build/
+app/build/
+**/build/
+
+# Local APKs (do not commit binaries)
+*.apk
+*.aab
+app/release/
+app/debug/
+
+# Gradle wrapper (keep jar, ignore nothing else needed)
+!gradle/wrapper/gradle-wrapper.jar
+
+# Logs / temp
+*.log
+build_log.txt
+build_release_log.txt
+install_log.txt
+install_log2.txt
+lic_log.txt
+lic_log2.txt
+lic_log3.txt
+lic_log4.txt
+
+# Downloaded SDK tooling (not part of codebase)
+cmdtools.zip
+cmdtools_extract/
+
+# IDE
+.idea/
+*.iml
+local.properties
+
+# OS
+.DS_Store
+Thumbs.db
+
+# User keys / secrets (never commit)
+keys/
+**/keys/
+
+# User note folders (non-code)
+this fodler was made by me the user who gave you the task you are curently working on please check the agent.md it contaisn very important notes/
