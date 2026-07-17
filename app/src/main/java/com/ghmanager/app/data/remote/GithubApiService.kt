@@ -1,8 +1,10 @@
 package com.ghmanager.app.data.remote
 
+import com.ghmanager.app.data.remote.model.CreatePagesRequest
 import com.ghmanager.app.data.remote.model.CreateRepoRequest
 import com.ghmanager.app.data.remote.model.GithubRepo
 import com.ghmanager.app.data.remote.model.GithubUser
+import com.ghmanager.app.data.remote.model.PagesResponse
 import com.ghmanager.app.data.remote.model.RenameRepoRequest
 import com.ghmanager.app.data.remote.model.TransferRepoRequest
 import retrofit2.Response
@@ -62,4 +64,12 @@ interface GithubApiService {
         @Path("repo") repo: String,
         @Body body: TransferRepoRequest
     ): Response<GithubRepo>
+
+    @POST("repos/{owner}/{repo}/pages")
+    @Headers("Accept: application/vnd.github+json")
+    suspend fun enablePages(
+        @Path("owner") owner: String,
+        @Path("repo") repo: String,
+        @Body body: CreatePagesRequest
+    ): Response<PagesResponse>
 }

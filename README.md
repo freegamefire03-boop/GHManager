@@ -15,13 +15,17 @@ layouts, no custom theming) per the Core-Logic-First approach.
   token across all tabs; switching wipes session data and reloads lists.
 - **Mid-action protection**: attempting to switch tokens while a process is
   busy shows a warning dialog.
+- **Swipeable tabs**: swipe left/right (or tap) between the three tabs.
 - **Tab 1 — Create Repo**: name, description, public/private, auto-init README.
 - **Tab 2 — History**: local log of repos created through this app (per token).
-- **Tab 3 — Existing Repos**: all repos on the active account via the GitHub API.
-- **Repo actions (bottom sheet)**: Clone to phone (downloads the repo archive
-  ZIP and extracts it into a user-chosen folder via the Storage Access
-  Framework), change visibility, rename, fork, transfer, delete. Code editing /
-  file upload omitted.
+- **Tab 3 — REPOS**: all repos on the active account via the GitHub API, shown
+  as a clean name-only list, with a Refresh button to re-fetch.
+- **Repo actions (bottom sheet)**: Open in browser, Clone to phone (downloads
+  the repo archive ZIP and extracts it into a user-chosen folder via the Storage
+  Access Framework), Publish to GitHub Pages (via API, using the repo's default
+  branch), change visibility, rename, fork, transfer, and delete (with a
+  3-second confirmation countdown to prevent accidents). Code editing / file
+  upload omitted.
 - **Bulletproof error handling**: every API call parses the HTTP/API response;
   token scope/permission errors are detected and reported explicitly
   (e.g. "requires 'delete_repo' scope").

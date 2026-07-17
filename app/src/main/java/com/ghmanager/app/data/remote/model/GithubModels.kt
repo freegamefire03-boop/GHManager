@@ -42,6 +42,21 @@ data class TransferRepoRequest(
     val teamIds: List<Long> = emptyList()
 )
 
+data class PagesSource(
+    val branch: String,
+    val path: String = "/"
+)
+
+data class CreatePagesRequest(
+    val source: PagesSource
+)
+
+data class PagesResponse(
+    @SerializedName("html_url") val htmlUrl: String? = null,
+    val status: String? = null,
+    val url: String? = null
+)
+
 data class GithubUser(
     @SerializedName("login") val login: String = "",
     val id: Long = 0,

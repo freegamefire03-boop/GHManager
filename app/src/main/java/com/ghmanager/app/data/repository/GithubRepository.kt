@@ -3,9 +3,12 @@ package com.ghmanager.app.data.repository
 import com.ghmanager.app.data.remote.ApiResult
 import com.ghmanager.app.data.remote.GithubApiService
 import com.ghmanager.app.data.remote.GithubErrorParser
+import com.ghmanager.app.data.remote.model.CreatePagesRequest
 import com.ghmanager.app.data.remote.model.CreateRepoRequest
 import com.ghmanager.app.data.remote.model.GithubRepo
 import com.ghmanager.app.data.remote.model.GithubUser
+import com.ghmanager.app.data.remote.model.PagesResponse
+import com.ghmanager.app.data.remote.model.PagesSource
 import com.ghmanager.app.data.remote.model.RenameRepoRequest
 import com.ghmanager.app.data.remote.model.TransferRepoRequest
 import okhttp3.OkHttpClient
@@ -83,4 +86,7 @@ class GithubRepository {
         serviceCall { forkRepo(owner, repo, org) }
     suspend fun transferRepo(owner: String, repo: String, newOwner: String): ApiResult<GithubRepo> =
         serviceCall { transferRepo(owner, repo, TransferRepoRequest(owner = newOwner)) }
+
+    suspend fun enablePages(owner: String, repo: String, branch: String): ApiResult<PagesResponse> =
+        serviceCall { enablePages(owner, repo, CreatePagesRequest(PagesSource(branch = branch, path = "/"))) }
 }

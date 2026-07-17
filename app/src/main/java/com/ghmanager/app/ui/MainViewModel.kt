@@ -310,6 +310,28 @@ class MainViewModel(
         }
     }
 
+    fun publishRepo(repo: GithubRepo) {
+        viewModelScope.launch {
+            _isBusy.value = true
+            val owner = repo.owner?.login ?: repo.fullName.substringBefore("/")
+            val branch = repo.defaultBranch.ifBlank { "main" }
+            when (val res = githubRepo.enablePages(owner, repo.name, branch)) {
+                is ApiResult.Success -> {
+                    historyRepo.logAction(ActionLogEntity(repo.fullName, "PUBLISH_PAGES", tokenId = tokenRepo.activeTokenId.value ?: "", success = true))
+                    val site = res.data.htmlUrl ?: "https://$owner.github.io/${repo.name}/"
+                    showMessage("Pages enabled. Site (may take a minute): $site", false)
+                    reloadAll()
+                }
+                is ApiResult.Error -> showError(res.error)
+            }
+            _isBusy.value = false
+        }
+    }
+
+    fun refreshRepos() {
+        reloadAll()
+    }
+
     /**
      * Entry point for "Clone to Phone". If a default save location is set,
      * clones immediately. Otherwise it asks the UI to prompt the user for a

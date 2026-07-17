@@ -2,6 +2,16 @@
 
 All notable changes to this project are logged here, newest first.
 
+## 2026-07-17 (v0.3.0-alpha — Repos tab UX + Publish)
+- Changed: Renamed the "Existing" tab to "REPOS".
+- Changed: Repo cards now show only the repository name (removed the cluttered full-name/visibility/description line) for easier scanning.
+- Added: Swipe left/right to move between the three tabs (Create Repo / History / REPOS), synced with the tab bar.
+- Added: "Open in Browser" action in the repo actions sheet (opens the repo's GitHub page).
+- Added: "Publish (GitHub Pages)" action — enables Pages via `POST /repos/{owner}/{repo}/pages` using the repo's actual default branch (so it works for `master` repos too, not just `main`). Empty/branch-less repos surface a clear API error.
+- Added: Refresh button on the REPOS tab to re-fetch the current account's repositories.
+- Added: Delete confirmation dialog with a 3-second countdown that keeps the confirm button disabled until it reaches 0, preventing accidental deletes.
+- Fixed: Bottom action ("Delete") in the repo sheet was hard to tap under the system nav bar; the sheet now applies navigation-bar padding and is scrollable.
+
 ## 2026-07-17 (token-save fixes)
 - Fixed: Tokens could fail to save / disappear. Root causes: (1) token metadata was packed into a delimiter string (`::`/`||`) that broke if a token name contained those characters; now stored as JSON. (2) `addToken` restored the previously active token via an async coroutine in `finally`, racing with result handling; restore is now done synchronously in order.
 - Fixed: Add-token dialog cleared the name/PAT fields immediately even when validation failed; fields now clear only after a successful save.
