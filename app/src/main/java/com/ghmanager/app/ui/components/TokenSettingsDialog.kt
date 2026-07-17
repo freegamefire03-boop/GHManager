@@ -74,9 +74,15 @@ fun TokenSettingsDialog(
             Button(
                 enabled = name.isNotBlank() && token.isNotBlank() && !isBusy,
                 onClick = {
-                    scope.launch { viewModel.addToken(name.trim(), token.trim()) }
-                    name = ""
-                    token = ""
+                    val n = name.trim()
+                    val t = token.trim()
+                    scope.launch {
+                        val ok = viewModel.addToken(n, t)
+                        if (ok) {
+                            name = ""
+                            token = ""
+                        }
+                    }
                 }
             ) { Text("Add Token") }
         },

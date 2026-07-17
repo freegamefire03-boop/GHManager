@@ -2,6 +2,11 @@
 
 All notable changes to this project are logged here, newest first.
 
+## 2026-07-17 (token-save fixes)
+- Fixed: Tokens could fail to save / disappear. Root causes: (1) token metadata was packed into a delimiter string (`::`/`||`) that broke if a token name contained those characters; now stored as JSON. (2) `addToken` restored the previously active token via an async coroutine in `finally`, racing with result handling; restore is now done synchronously in order.
+- Fixed: Add-token dialog cleared the name/PAT fields immediately even when validation failed; fields now clear only after a successful save.
+- Note: existing tokens saved in the old (broken) metadata format are ignored after this update; re-add tokens if the list appears empty.
+
 ## 2026-07-17 (signing fix)
 - Fixed: Release APK was unsigned, causing "App not installed / package appears to be invalid" on device. The `release` build type now uses the debug signing config so side-loaded test builds install correctly. (Not for production distribution — a dedicated release keystore is still needed for that.)
 

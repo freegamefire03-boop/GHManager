@@ -164,26 +164,29 @@ class MainViewModel(
 
     suspend fun addToken(name: String, token: String): Boolean {
         _isBusy.value = true
-        val userRes = try {
-            // validate token by fetching user
+        try {
+            // Validate the token by fetching the authenticated user.
             githubRepo.setToken(token)
-            githubRepo.getCurrentUser()
+            val userRes = githubRepo.getCurrentUser()
+            return when (userRes) {
+                is ApiResult.Success -> {
+                    val username = userRes.data.login
+                    tokenRepo.addToken(name, token, username)
+                    showMessage("Token '$name' added for user $username", false)
+                    true
+                }
+                is ApiResult.Error -> {
+                    showError(userRes.error)
+                    false
+                }
+            }
         } finally {
-            applyActiveToken() // restore active
-        }
-        return when (userRes) {
-            is ApiResult.Success -> {
-                val username = userRes.data.login
-                tokenRepo.addToken(name, token, username)
-                showMessage("Token '$name' added for user $username", false)
-                _isBusy.value = false
-                true
-            }
-            is ApiResult.Error -> {
-                showError(userRes.error)
-                _isBusy.value = false
-                false
-            }
+            // Restore the previously active token synchronously, then refresh UI.
+            val activeId = tokenRepo.activeTokenId.value
+            val activeToken = if (activeId != null) tokenRepo.getPlainToken(activeId) else null
+            githubRepo.setToken(activeToken)
+            reloadAll()
+            _isBusy.value = false
         }
     }
 
