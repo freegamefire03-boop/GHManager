@@ -2,6 +2,9 @@
 
 All notable changes to this project are logged here, newest first.
 
+## 2026-07-17 (snackbar/popup fix)
+- Fixed: The message popup shown after actions was barely readable (no explicit text color, could sit under the nav bar, truncated long messages, auto-hid too fast). It now uses an explicit high-contrast on-container text color, respects nav-bar padding, is full-width and scrollable for long messages, has a "Dismiss" button, and lingers longer (10s) for errors/long messages.
+
 ## 2026-07-17 (v0.3.0-alpha — Repos tab UX + Publish)
 - Changed: Renamed the "Existing" tab to "REPOS".
 - Changed: Repo cards now show only the repository name (removed the cluttered full-name/visibility/description line) for easier scanning.

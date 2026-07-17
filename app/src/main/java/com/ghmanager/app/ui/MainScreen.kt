@@ -3,10 +3,19 @@ package com.ghmanager.app.ui
 import android.content.Context
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -87,7 +96,10 @@ fun MainScreen(viewModel: MainViewModel = koinViewModel()) {
 
     LaunchedEffect(message) {
         message?.let {
-            kotlinx.coroutines.delay(4000)
+            // Errors and long messages linger so they can actually be read;
+            // the user can also dismiss manually via the Dismiss button.
+            val duration = if (it.isError || it.text.length > 60) 10000L else 5000L
+            kotlinx.coroutines.delay(duration)
             viewModel.clearMessage()
         }
     }
@@ -176,15 +188,43 @@ fun MainScreen(viewModel: MainViewModel = koinViewModel()) {
 
             message?.let {
                 Box(
-                    modifier = Modifier.fillMaxSize().padding(16.dp),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .navigationBarsPadding()
+                        .padding(16.dp),
                     contentAlignment = Alignment.BottomCenter
                 ) {
+                    val container = if (it.isError)
+                        MaterialTheme.colorScheme.errorContainer
+                    else MaterialTheme.colorScheme.primaryContainer
+                    val onContainer = if (it.isError)
+                        MaterialTheme.colorScheme.onErrorContainer
+                    else MaterialTheme.colorScheme.onPrimaryContainer
+
                     Snackbar(
-                        containerColor = if (it.isError)
-                            MaterialTheme.colorScheme.errorContainer
-                        else MaterialTheme.colorScheme.primaryContainer
+                        modifier = Modifier.fillMaxWidth(),
+                        containerColor = container,
+                        contentColor = onContainer,
+                        action = {
+                            TextButton(onClick = { viewModel.clearMessage() }) {
+                                Text("Dismiss", color = onContainer)
+                            }
+                        }
                     ) {
-                        Text(it.text)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = it.text,
+                                color = onContainer,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .heightIn(max = 200.dp)
+                                    .verticalScroll(rememberScrollState())
+                            )
+                        }
                     }
                 }
             }
