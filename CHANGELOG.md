@@ -2,6 +2,9 @@
 
 All notable changes to this project are logged here, newest first.
 
+## 2026-07-17 (signing fix)
+- Fixed: Release APK was unsigned, causing "App not installed / package appears to be invalid" on device. The `release` build type now uses the debug signing config so side-loaded test builds install correctly. (Not for production distribution — a dedicated release keystore is still needed for that.)
+
 ## 2026-07-17
 - Added: Full Kotlin/Jetpack Compose Android app scaffold (Gradle, manifest, Application class).
 - Added: Encrypted token storage via EncryptedSharedPreferences (TokenStore).
