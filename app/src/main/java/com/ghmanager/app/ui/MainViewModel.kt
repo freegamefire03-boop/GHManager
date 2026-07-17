@@ -356,7 +356,8 @@ class MainViewModel(
     suspend fun cloneRepoToUri(context: android.content.Context, repo: GithubRepo, treeUri: String): String? {
         _isBusy.value = true
         val result = runCatching {
-            val zipBytes = downloadRepoZipBytes(repo.cloneUrl)
+            val token = tokenRepo.activeTokenId.value?.let { tokenRepo.getPlainToken(it) }
+            val zipBytes = downloadRepoZipBytes(repo, token)
             extractZipIntoTree(context, treeUri, zipBytes, repo.name)
         }.onSuccess {
             historyRepo.logAction(
@@ -387,14 +388,39 @@ class MainViewModel(
         _pendingCloneWithUri.value = uri to repo
     }
 
-    private suspend fun downloadRepoZipBytes(cloneUrl: String): ByteArray {
-        val zipUrl = cloneUrl.removeSuffix(".git") + "/archive/refs/heads/main.zip"
-        val client = okhttp3.OkHttpClient()
-        val req = okhttp3.Request.Builder().url(zipUrl).build()
-        val resp = client.newCall(req).execute()
-        if (!resp.isSuccessful) throw Exception("HTTP ${resp.code}")
-        return resp.body?.bytes()
-            ?: throw Exception("Empty response body")
+    private fun downloadRepoZipBytes(repo: GithubRepo, token: String?): ByteArray {
+        // Prefer the GitHub API tarball/zipball endpoint: it resolves the
+        // default branch automatically and works for private repos with auth.
+        val owner = repo.owner?.login ?: repo.fullName.substringBefore("/")
+        val branch = repo.defaultBranch.ifBlank { "" }
+        val apiZipUrl = buildString {
+            append("https://api.github.com/repos/")
+            append(owner).append("/").append(repo.name)
+            append("/zipball")
+            if (branch.isNotBlank()) append("/").append(branch)
+        }
+
+        val client = okhttp3.OkHttpClient.Builder()
+            .followRedirects(true)
+            .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(120, java.util.concurrent.TimeUnit.SECONDS)
+            .build()
+
+        val builder = okhttp3.Request.Builder()
+            .url(apiZipUrl)
+            .addHeader("Accept", "application/vnd.github+json")
+            .addHeader("X-GitHub-Api-Version", "2022-11-28")
+        if (!token.isNullOrBlank()) {
+            builder.addHeader("Authorization", "Bearer $token")
+        }
+
+        val resp = client.newCall(builder.build()).execute()
+        resp.use {
+            if (!it.isSuccessful) {
+                throw Exception("Download failed: HTTP ${it.code}${if (it.code == 404) " (repo/branch not found or no access)" else ""}")
+            }
+            return it.body?.bytes() ?: throw Exception("Empty response body")
+        }
     }
 
     /**

@@ -2,6 +2,10 @@
 
 All notable changes to this project are logged here, newest first.
 
+## 2026-07-17 (clone fix)
+- Fixed: "Clone to Phone" always failed on repos whose default branch isn't `main` (e.g. `master`) because the download URL hardcoded `main` → HTTP 404. It now downloads via the GitHub API zipball endpoint, which resolves the default branch automatically.
+- Fixed: Clone could not fetch private repos (the download used no auth). It now sends the active token's `Authorization: Bearer` header, so private repos clone too. Errors now report the HTTP code (with a hint on 404).
+
 ## 2026-07-17 (snackbar/popup fix)
 - Fixed: The message popup shown after actions was barely readable (no explicit text color, could sit under the nav bar, truncated long messages, auto-hid too fast). It now uses an explicit high-contrast on-container text color, respects nav-bar padding, is full-width and scrollable for long messages, has a "Dismiss" button, and lingers longer (10s) for errors/long messages.
 
