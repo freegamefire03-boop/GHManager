@@ -62,8 +62,11 @@ class GithubRepository {
             val resp = block(svc)
             if (resp.isSuccessful) {
                 val body = resp.body()
+                // 204 No Content (and other empty-body successes) have a null body
+                // but are still successful — e.g. DELETE returns 204. Treat a
+                // successful response as success even when the body is null.
                 if (body != null) ApiResult.Success(body)
-                else ApiResult.Error(GithubErrorParser.parse(resp))
+                else ApiResult.Success(Unit as T)
             } else {
                 ApiResult.Error(GithubErrorParser.parse(resp))
             }

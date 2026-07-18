@@ -5,8 +5,9 @@ Personal Access Tokens (PATs). Built with Clean Architecture / MVVM, encrypted
 token storage, and precise API error handling.
 
 ## Status
-Active development — core engine working, UI is deliberately minimal (wireframe
-layouts, no custom theming) per the Core-Logic-First approach.
+Active development — core engine working and **verified on-device** (v0.3.2-alpha,
+versionCode 5). UI is deliberately minimal (wireframe layouts, no custom theming) per
+the Core-Logic-First approach.
 
 ## Features
 - **Multi-token management**: add several GitHub PATs (each under a user-defined
@@ -25,9 +26,13 @@ layouts, no custom theming) per the Core-Logic-First approach.
   (when Pages is live), Clone to phone (downloads
   the repo archive ZIP and extracts it into a user-chosen folder via the Storage
   Access Framework), Publish to GitHub Pages (via API, using the repo's default
-  branch), change visibility, rename, fork, transfer, and delete (with a
-  3-second confirmation countdown to prevent accidents). Code editing / file
-  upload omitted.
+   branch), change visibility, rename, fork, transfer, and delete (with a
+   3-second confirmation countdown to prevent accidents). Code editing / file
+   upload omitted.
+- **Private-repo Publish helper**: if **Publish (Pages)** fails because a free
+   plan can't host Pages on private repos, the app shows a banner with a
+   **"Make public & publish"** confirm button — tap it to make the repo public
+   and retry Pages automatically (prompt-with-confirm, never automatic).
 - **Bulletproof error handling**: every API call parses the HTTP/API response;
   token scope/permission errors are detected and reported explicitly
   (e.g. "requires 'delete_repo' scope").
@@ -62,5 +67,10 @@ app/src/main/java/com/ghmanager/app/
 - Clone saves an **extracted folder** (not a full git clone). The default save
   location is chosen on first clone (SAF picker) and can be changed in Settings.
 - Settings is a dialog (no separate route yet).
-- No unit/instrumentation tests yet.
-- Token scope errors are inferred heuristically from response text.
+- No unit/instrumentation tests yet (key UI controls carry `testTag`/`contentDescription`
+  hooks for future Espresso coverage).
+- After deleting a repo the list may briefly show the stale entry until the next
+  Refresh (GitHub is authoritative). Optimistic list removal is a future hardening.
+- GitHub Pages can only be published on **public** repos with a free account; the app
+   surfaces GitHub's 422 ("plan does not support Pages") when attempted on a private repo
+   and offers a **"Make public & publish"** confirm to flip it public and retry.

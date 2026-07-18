@@ -2,6 +2,21 @@
 
 All notable changes to this project are logged here, newest first.
 
+## 2026-07-18 (v0.3.2-alpha — delete/clone error bug fix + red delete button)
+- Fixed: Deleting a repository always showed a bogus error banner ("Request failed with HTTP 204" / similar) even though the delete succeeded. Root cause: `serviceCall` in `GithubRepository.kt` treated a successful **204 No Content** response (DELETE returns an empty body) as an error because `resp.body()` was null. Now an HTTP-success with a null body is treated as success (returns `ApiResult.Success(Unit)`), so `deleteRepo` shows the correct "Repository '…' deleted" confirmation. This also fixes any other empty-body success responses.
+- Changed: Post-mutation refreshes (delete/visibility/rename/fork/transfer/publish/Make-public-and-publish/create) now use a **quiet** reload (`reloadReposQuietly`) that updates the list without ever overwriting a success confirmation with a transient list-refresh error.
+- Changed: The "Delete Repository" button in the repo action sheet is now **red** (Material error color) to make the destructive action obvious.
+
+## 2026-07-18 (v0.3.2-alpha — "Make public & publish" UX)
+- Added: When **Publish (Pages)** fails on a private repo because the GitHub plan doesn't support Pages on private repos (HTTP 422 with the plan/private/public keyword), the app now shows a banner asking "Make this repo public, then publish?" with a **"Make public & publish"** confirm button. Tapping it makes the repo public (`updateRepo` `private=false`) and retries `enablePages` automatically — a prompt-with-confirm, not an automatic change.
+- Added: `GithubError.isPrivatePagesError` detection; `UiMessage` gained `actionLabel`/`action` fields and `UiAction.MAKE_PUBLIC_AND_PUBLISH`; `NoteBanner` renders an optional action button (`banner_action` testTag).
+- Verified: banner message + button render correctly in-app (uiautomator). The exact GitHub sequence the confirm performs (PATCH public → HTTP 200; POST pages → HTTP 201 with live `html_url`) was proven working via the API.
+
+## 2026-07-18 (v0.3.2-alpha — test hooks + on-device verification)
+- Added: `contentDescription`/`testTag` semantics on key Compose controls (tabs, repo cards, Refresh, action-sheet buttons, delete-confirm, dialog Save buttons) so the UI can be driven deterministically by `uiautomator`/Espresso instead of blind coordinate taps. Harmless to keep; aids future automated testing.
+- Verified on device (R58N34T8EBE, real PAT): app launches clean after the DB v1->2 upgrade; live GitHub API calls succeed (`GET /user/repos` 200); **Clone to Phone** downloads + extracts the zipball into `Download/GITHUB CLONES/<repo>/` (SAF write works); **Make Private** flips tag + server state; **Publish (Pages)** issues the correct `POST .../pages` and gracefully surfaces GitHub's 422 ("plan does not support Pages" — a free-account limitation, not a bug); **Delete** enforces the 3s countdown then `DELETE` -> 204, repo removed (list refreshes to 14).
+- Note: a brief stale-render was observed right after Delete until an explicit Refresh; GitHub is authoritative (404). No blocker.
+
 ## 2026-07-18 (v0.3.2-alpha — HOTFIX: launch crash)
 - Fixed: App crashed on launch ("opens then closes immediately") with `IllegalStateException: Room cannot verify the data integrity`. Cause: the F2 change added columns to `RepoHistoryEntity` (schema change) but the Room database version was not bumped. Bumped `AppDatabase` version 1 -> 2; `fallbackToDestructiveMigration()` wipes and rebuilds the local DB on upgrade (History is cleared on first launch of this version — expected for this personal app).
 - Verified on device via ADB: launches cleanly (`Displayed ...MainActivity`), no crash, process stays alive.

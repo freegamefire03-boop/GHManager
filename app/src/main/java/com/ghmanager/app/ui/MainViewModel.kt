@@ -20,7 +20,16 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-data class UiMessage(val text: String, val isError: Boolean)
+data class UiMessage(
+    val text: String,
+    val isError: Boolean,
+    val actionLabel: String? = null,
+    val action: UiAction? = null
+)
+
+enum class UiAction {
+    MAKE_PUBLIC_AND_PUBLISH
+}
 
 class MainViewModel(
     private val tokenRepo: TokenRepository,
@@ -39,6 +48,7 @@ class MainViewModel(
     val needsSaveLocation: StateFlow<Boolean> = _needsSaveLocation.asStateFlow()
 
     private var pendingCloneRepo: GithubRepo? = null
+    private var pendingPublishRepo: GithubRepo? = null
 
     private val _pendingCloneWithUri = MutableStateFlow<Pair<String, GithubRepo>?>(null)
     val pendingCloneWithUri: StateFlow<Pair<String, GithubRepo>?> = _pendingCloneWithUri.asStateFlow()
@@ -223,7 +233,7 @@ class MainViewModel(
                     )
                     historyRepo.recordCreatedRepo(entity)
                     showMessage("Repository '${repo.fullName}' created", false)
-                    reloadAll()
+                    reloadReposQuietly()
                 }
                 is ApiResult.Error -> showError(res.error)
             }
@@ -241,12 +251,29 @@ class MainViewModel(
                     historyRepo.removeFromHistory(repo.fullName)
                     historyRepo.logAction(ActionLogEntity(repo.fullName, "DELETE", tokenId = tokenRepo.activeTokenId.value ?: "", success = true))
                     showMessage("Repository '${repo.fullName}' deleted", false)
-                    reloadAll()
+                    // Refresh the list in the background. A refresh failure here is
+                    // non-fatal (the delete already succeeded), so never clobber the
+                    // success message with an error banner — just re-fetch optimistically.
+                    reloadReposQuietly()
                 }
                 is ApiResult.Error -> showError(res.error)
             }
             _isBusy.value = false
             onDone()
+        }
+    }
+
+    /**
+     * Re-fetches the repo list without surfacing errors. Used after a successful
+     * mutation (delete/visibility/publish) where a transient list-refresh failure
+     * must NOT overwrite the success confirmation already shown to the user.
+     */
+    private fun reloadReposQuietly() {
+        viewModelScope.launch {
+            when (val res = githubRepo.getRepos()) {
+                is ApiResult.Success -> _existingRepos.value = res.data
+                is ApiResult.Error -> { /* keep current list; ignore refresh error */ }
+            }
         }
     }
 
@@ -258,7 +285,7 @@ class MainViewModel(
                 is ApiResult.Success -> {
                     historyRepo.logAction(ActionLogEntity(repo.fullName, "RENAME->$newName", tokenId = tokenRepo.activeTokenId.value ?: "", success = true))
                     showMessage("Repository renamed to '${res.data.fullName}'", false)
-                    reloadAll()
+                    reloadReposQuietly()
                 }
                 is ApiResult.Error -> showError(res.error)
             }
@@ -274,7 +301,7 @@ class MainViewModel(
                 is ApiResult.Success -> {
                     historyRepo.logAction(ActionLogEntity(repo.fullName, "VISIBILITY->${if (makePrivate) "private" else "public"}", tokenId = tokenRepo.activeTokenId.value ?: "", success = true))
                     showMessage("Visibility updated", false)
-                    reloadAll()
+                    reloadReposQuietly()
                 }
                 is ApiResult.Error -> showError(res.error)
             }
@@ -290,7 +317,7 @@ class MainViewModel(
                 is ApiResult.Success -> {
                     historyRepo.logAction(ActionLogEntity(repo.fullName, "FORK", tokenId = tokenRepo.activeTokenId.value ?: "", success = true))
                     showMessage("Forked to ${res.data.fullName}", false)
-                    reloadAll()
+                    reloadReposQuietly()
                 }
                 is ApiResult.Error -> showError(res.error)
             }
@@ -306,7 +333,7 @@ class MainViewModel(
                 is ApiResult.Success -> {
                     historyRepo.logAction(ActionLogEntity(repo.fullName, "TRANSFER->$newOwner", tokenId = tokenRepo.activeTokenId.value ?: "", success = true))
                     showMessage("Transfer initiated to $newOwner", false)
-                    reloadAll()
+                    reloadReposQuietly()
                 }
                 is ApiResult.Error -> showError(res.error)
             }
@@ -330,9 +357,25 @@ class MainViewModel(
                     historyRepo.logAction(ActionLogEntity(repo.fullName, "PUBLISH_PAGES", tokenId = tokenRepo.activeTokenId.value ?: "", success = true))
                     val site = res.data.htmlUrl ?: "https://$owner.github.io/${repo.name}/"
                     showMessage("Pages enabled. Site (may take a minute): $site", false)
-                    reloadAll()
+                    reloadReposQuietly()
                 }
-                is ApiResult.Error -> showError(res.error)
+                is ApiResult.Error -> {
+                    if (res.error.isPrivatePagesError && repo.isPrivate) {
+                        // GitHub Pages needs a public repo on free plans. Suggest
+                        // making it public first, with a confirmable action.
+                        pendingPublishRepo = repo
+                        _message.value = UiMessage(
+                            text = "Cannot publish: GitHub Pages requires a PUBLIC repository " +
+                                "(your plan doesn't support Pages on private repos). Make this repo " +
+                                "public, then publish?",
+                            isError = true,
+                            actionLabel = "Make public & publish",
+                            action = UiAction.MAKE_PUBLIC_AND_PUBLISH
+                        )
+                    } else {
+                        showError(res.error)
+                    }
+                }
             }
             _isBusy.value = false
         }
@@ -340,6 +383,49 @@ class MainViewModel(
 
     fun refreshRepos() {
         reloadAll()
+    }
+
+    /**
+     * Called when the user confirms the "Make public & publish" suggestion after a
+     * private-repo Pages failure: flips the repo to public, then retries publishing.
+     */
+    fun confirmMakePublicAndPublish() {
+        val repo = pendingPublishRepo ?: return
+        pendingPublishRepo = null
+        _message.value = null
+        viewModelScope.launch {
+            _isBusy.value = true
+            val owner = repo.owner?.login ?: repo.fullName.substringBefore("/")
+            val branch = repo.defaultBranch
+            // Step 1: make the repo public.
+            when (val vis = githubRepo.updateRepo(owner, repo.name,
+                com.ghmanager.app.data.remote.model.RenameRepoRequest(
+                    name = repo.name, description = repo.description, `private` = false))) {
+                is ApiResult.Error -> {
+                    showError(vis.error)
+                    _isBusy.value = false
+                    return@launch
+                }
+                is ApiResult.Success -> {
+                    historyRepo.logAction(ActionLogEntity(repo.fullName, "VISIBILITY->public", tokenId = tokenRepo.activeTokenId.value ?: "", success = true))
+                    // Step 2: publish Pages now that it's public.
+                    if (branch.isNotBlank()) {
+                        when (val pub = githubRepo.enablePages(owner, repo.name, branch)) {
+                            is ApiResult.Success -> {
+                                historyRepo.logAction(ActionLogEntity(repo.fullName, "PUBLISH_PAGES", tokenId = tokenRepo.activeTokenId.value ?: "", success = true))
+                                val site = pub.data.htmlUrl ?: "https://$owner.github.io/${repo.name}/"
+                                showMessage("Made public and published. Site (may take a minute): $site", false)
+                            }
+                            is ApiResult.Error -> showError(pub.error)
+                        }
+                    } else {
+                        showMessage("Made '${repo.fullName}' public. Cannot publish: default branch unknown.", true)
+                    }
+                    reloadReposQuietly()
+                }
+            }
+            _isBusy.value = false
+        }
     }
 
     /**

@@ -10,6 +10,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -25,6 +27,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
 import com.ghmanager.app.data.remote.model.GithubRepo
 import com.ghmanager.app.ui.MainViewModel
@@ -75,15 +80,15 @@ fun RepoActionsSheet(
                 ) { Text("Open Published Page") }
             }
 
-            ActionButton("Clone to Phone (download zip)") { viewModel.cloneRepo(repo); onDismiss() }
-            ActionButton("Publish (GitHub Pages)") { viewModel.publishRepo(repo); onDismiss() }
-            ActionButton(if (repo.isPrivate) "Make Public" else "Make Private") {
+            ActionButton("Clone to Phone (download zip)", "action_clone") { viewModel.cloneRepo(repo); onDismiss() }
+            ActionButton("Publish (GitHub Pages)", "action_publish") { viewModel.publishRepo(repo); onDismiss() }
+            ActionButton(if (repo.isPrivate) "Make Public" else "Make Private", "action_visibility") {
                 viewModel.changeVisibility(repo, !repo.isPrivate); onDismiss()
             }
-            ActionButton("Rename") { renameOpen = true }
-            ActionButton("Fork") { viewModel.forkRepo(repo); onDismiss() }
-            ActionButton("Transfer Ownership") { transferOpen = true }
-            ActionButton("Delete Repository") { deleteConfirmOpen = true }
+            ActionButton("Rename", "action_rename") { renameOpen = true }
+            ActionButton("Fork", "action_fork") { viewModel.forkRepo(repo); onDismiss() }
+            ActionButton("Transfer Ownership", "action_transfer") { transferOpen = true }
+            DeleteButton("Delete Repository", "action_delete") { deleteConfirmOpen = true }
         }
     }
 
@@ -107,9 +112,38 @@ fun RepoActionsSheet(
 }
 
 @Composable
-private fun ActionButton(label: String, onClick: () -> Unit) {
-    Button(onClick = onClick, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+private fun ActionButton(label: String, tag: String, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .semantics {
+                testTag = tag
+                contentDescription = tag
+            }
+    ) {
         Text(label)
+    }
+}
+
+@Composable
+private fun DeleteButton(label: String, tag: String, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.error,
+            contentColor = MaterialTheme.colorScheme.onError
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .semantics {
+                testTag = tag
+                contentDescription = tag
+            }
+    ) {
+        Text(label, color = MaterialTheme.colorScheme.onError)
     }
 }
 
@@ -137,7 +171,11 @@ private fun DeleteConfirmDialog(
             Text("Are you sure you want to delete '${repo.fullName}'? This cannot be undone.")
         },
         confirmButton = {
-            TextButton(enabled = enabled, onClick = onConfirm) {
+            TextButton(
+                enabled = enabled,
+                onClick = onConfirm,
+                modifier = Modifier.semantics { testTag = "delete_confirm"; contentDescription = "delete_confirm" }
+            ) {
                 Text(if (enabled) "Yes, delete" else "Yes, delete ($secondsLeft)")
             }
         },
@@ -159,10 +197,13 @@ private fun RenameDialog(repo: GithubRepo, viewModel: MainViewModel, onDismiss: 
             }
         },
         confirmButton = {
-            TextButton(onClick = {
-                viewModel.renameRepo(repo, name, desc.ifBlank { null }, null)
-                onDismiss()
-            }) { Text("Save") }
+            TextButton(
+                onClick = {
+                    viewModel.renameRepo(repo, name, desc.ifBlank { null }, null)
+                    onDismiss()
+                },
+                modifier = Modifier.semantics { testTag = "rename_save"; contentDescription = "rename_save" }
+            ) { Text("Save") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
@@ -178,12 +219,15 @@ private fun TransferDialog(repo: GithubRepo, viewModel: MainViewModel, onDismiss
             OutlinedTextField(value = owner, onValueChange = { owner = it }, label = { Text("New owner username/org") })
         },
         confirmButton = {
-            TextButton(onClick = {
-                if (owner.isNotBlank()) {
-                    viewModel.transferRepo(repo, owner.trim())
-                    onDismiss()
-                }
-            }) { Text("Transfer") }
+            TextButton(
+                onClick = {
+                    if (owner.isNotBlank()) {
+                        viewModel.transferRepo(repo, owner.trim())
+                        onDismiss()
+                    }
+                },
+                modifier = Modifier.semantics { testTag = "transfer_confirm"; contentDescription = "transfer_confirm" }
+            ) { Text("Transfer") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )

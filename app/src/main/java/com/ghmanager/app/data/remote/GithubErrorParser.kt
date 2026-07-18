@@ -12,7 +12,8 @@ data class GithubError(
     val httpCode: Int,
     val message: String,
     val isScopeError: Boolean = false,
-    val requiredScope: String? = null
+    val requiredScope: String? = null,
+    val isPrivatePagesError: Boolean = false
 )
 
 object GithubErrorParser {
@@ -53,6 +54,14 @@ object GithubErrorParser {
             else -> false
         }
 
+        // GitHub Pages cannot be enabled on private repos with a free plan.
+        // GitHub returns 422 "Your current plan does not support GitHub Pages
+        // for this repository." (or similar) — flag it so the UI can suggest
+        // making the repo public first.
+        val privatePagesError = code == 422 &&
+            text.contains("pages") &&
+            (text.contains("plan") || text.contains("private") || text.contains("public"))
+
         if (scopeError) {
             scope = inferRequiredScope(text)
         }
@@ -70,7 +79,8 @@ object GithubErrorParser {
             httpCode = code,
             message = message,
             isScopeError = scopeError,
-            requiredScope = scope
+            requiredScope = scope,
+            isPrivatePagesError = privatePagesError
         )
     }
 

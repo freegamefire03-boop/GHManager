@@ -24,6 +24,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTag
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -65,7 +68,11 @@ fun ExistingReposTab(viewModel: MainViewModel) {
                 IconButton(onClick = { legendOpen = true }) {
                     Icon(Icons.AutoMirrored.Filled.HelpOutline, contentDescription = "Tag legend")
                 }
-                IconButton(onClick = { viewModel.refreshRepos() }, enabled = !isBusy) {
+                IconButton(
+                    onClick = { viewModel.refreshRepos() },
+                    enabled = !isBusy,
+                    modifier = Modifier.semantics { testTag = "repos_refresh"; contentDescription = "repos_refresh" }
+                ) {
                     Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                 }
             }
@@ -94,6 +101,7 @@ private fun RepoCard(repo: GithubRepo, onClick: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
             .clickable { onClick() }
+            .semantics { testTag = "repo_card_${repo.name}"; contentDescription = "repo_card_${repo.name}" }
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),

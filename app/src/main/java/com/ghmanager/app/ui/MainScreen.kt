@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -35,6 +37,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.Button
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -46,6 +49,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -162,17 +168,20 @@ fun MainScreen(viewModel: MainViewModel = koinViewModel()) {
                     Tab(
                         selected = pagerState.currentPage == 0,
                         onClick = { pagerScope.launch { pagerState.animateScrollToPage(0) } },
-                        text = { Text("Create Repo") }
+                        text = { Text("Create Repo") },
+                        modifier = Modifier.semantics { testTag = "tab_create"; contentDescription = "tab_create" }
                     )
                     Tab(
                         selected = pagerState.currentPage == 1,
                         onClick = { pagerScope.launch { pagerState.animateScrollToPage(1) } },
-                        text = { Text("History") }
+                        text = { Text("History") },
+                        modifier = Modifier.semantics { testTag = "tab_history"; contentDescription = "tab_history" }
                     )
                     Tab(
                         selected = pagerState.currentPage == 2,
                         onClick = { pagerScope.launch { pagerState.animateScrollToPage(2) } },
-                        text = { Text("REPOS") }
+                        text = { Text("REPOS") },
+                        modifier = Modifier.semantics { testTag = "tab_repos"; contentDescription = "tab_repos" }
                     )
                 }
 
@@ -180,6 +189,10 @@ fun MainScreen(viewModel: MainViewModel = koinViewModel()) {
                     NoteBanner(
                         text = it.text,
                         isError = it.isError,
+                        actionLabel = it.actionLabel,
+                        onAction = if (it.action == UiAction.MAKE_PUBLIC_AND_PUBLISH) {
+                            { viewModel.confirmMakePublicAndPublish() }
+                        } else null,
                         onDismiss = { viewModel.clearMessage() }
                     )
                 }
@@ -228,6 +241,8 @@ fun MainScreen(viewModel: MainViewModel = koinViewModel()) {
 private fun NoteBanner(
     text: String,
     isError: Boolean,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null,
     onDismiss: () -> Unit
 ) {
     val container = if (isError)
@@ -276,6 +291,17 @@ private fun NoteBanner(
                     .heightIn(max = 160.dp)
                     .verticalScroll(rememberScrollState())
             )
+            if (actionLabel != null && onAction != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = onAction,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { testTag = "banner_action"; contentDescription = "banner_action" }
+                ) {
+                    Text(actionLabel)
+                }
+            }
         }
     }
 }
