@@ -81,7 +81,9 @@ fun MainScreen(viewModel: MainViewModel = koinViewModel()) {
     var tokenMenuOpen by remember { mutableStateOf(false) }
     var settingsOpen by remember { mutableStateOf(false) }
 
-    val activeToken = tokens.firstOrNull { it.id == activeTokenId }
+    val activeToken = remember(tokens, activeTokenId) {
+        tokens.firstOrNull { it.id == activeTokenId }
+    }
 
     val treeLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocumentTree()

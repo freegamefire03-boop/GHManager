@@ -12,14 +12,15 @@ android {
         applicationId "com.ghmanager.app"
         minSdk 26
         targetSdk 34
-        versionCode 5
-        versionName "0.3.2-alpha"
+        versionCode 6
+        versionName "0.3.3-alpha"
     }
 
     buildTypes {
         release {
             signingConfig signingConfigs.getByName("debug")
-            minifyEnabled false
+            minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
@@ -85,6 +86,9 @@ dependencies {
 
     // EncryptedSharedPreferences
     implementation 'androidx.security:security-crypto:1.1.0-alpha06'
+
+    // Baseline Profile support (PGO / AOT for sideloaded + production builds)
+    implementation 'androidx.profileinstaller:profileinstaller:1.4.1'
 
     // Storage Access Framework helpers (DocumentFile)
     implementation 'androidx.documentfile:documentfile:1.0.1'

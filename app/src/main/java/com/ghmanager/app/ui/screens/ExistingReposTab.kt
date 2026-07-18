@@ -81,7 +81,7 @@ fun ExistingReposTab(viewModel: MainViewModel) {
             Text("No repositories found for this token.", modifier = Modifier.padding(16.dp))
         }
         LazyColumn(modifier = Modifier.fillMaxSize()) {
-            items(repos) { repo ->
+            items(repos, key = { it.fullName }) { repo ->
                 RepoCard(repo) { selected = repo }
             }
         }

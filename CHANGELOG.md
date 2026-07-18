@@ -2,6 +2,17 @@
 
 All notable changes to this project are logged here, newest first.
 
+## 2026-07-18 (v0.3.3-alpha — dark theme + performance optimization + R8 fix)
+- Added: GitHub-inspired **dark theme** (`#0D1117` background, `#161B22` surface, `#2F81F7` primary accent). `ThemeMode` enum (SYSTEM/DARK/LIGHT) persisted via `ThemeStore` (EncryptedSharedPreferences). Default = SYSTEM (follows phone setting). Settings dialog has a 3-button theme toggle (System/Dark/Light) at the top.
+- Changed: `AndroidManifest` theme set to `Theme.AppCompat.DayNight.NoActionBar` to prevent a white flash on launch when the phone is in dark mode.
+- Changed: `app/build.gradle` now enables `minifyEnabled true` and `shrinkResources true` for the release build type, reducing the APK from ~18 MB (debug) to **1.88 MB** (release) via R8 tree-shaking and resource deduplication.
+- Added: Hand-written `baseline-prof.txt` (ART profile rules) and `ProfileInstaller:1.4.1` dependency to guide Ahead-of-Time (AOT) compilation on first launch for faster cold starts.
+- Added: `proguard-rules.pro` keep rules for `androidx.lifecycle.compose.**`, `androidx.compose.runtime.**`, `androidx.compose.ui.platform.*CompositionLocals*`, and `kotlinx.coroutines.**` — prevents R8 from stripping `LocalLifecycleOwner` and other CompositionLocals needed at runtime.
+- Fixed: Release APK crashed on launch (`IllegalStateException: CompositionLocal LocalLifecycleOwner not present`) because R8 stripped the lifecycle-runtime-compose CompositionLocal fields. The ProGuard keep rules above resolve this.
+- Changed: `gradle.properties` sets `android.enableR8.fullMode=false` — R8 full mode aggressively strips even more and caused additional crashes; standard minification already delivers the size/perf gains.
+- Changed: `activeToken` in `MainScreen.kt` is now wrapped in `remember(tokens, activeTokenId)` so Compose doesn't re-compute it on every recomposition.
+- Changed: `LazyColumn.items` in `ExistingReposTab.kt` now keys items by `it.fullName` for stable recomposition and smoother list updates.
+
 ## 2026-07-18 (v0.3.2-alpha — delete/clone error bug fix + red delete button)
 - Fixed: Deleting a repository always showed a bogus error banner ("Request failed with HTTP 204" / similar) even though the delete succeeded. Root cause: `serviceCall` in `GithubRepository.kt` treated a successful **204 No Content** response (DELETE returns an empty body) as an error because `resp.body()` was null. Now an HTTP-success with a null body is treated as success (returns `ApiResult.Success(Unit)`), so `deleteRepo` shows the correct "Repository '…' deleted" confirmation. This also fixes any other empty-body success responses.
 - Changed: Post-mutation refreshes (delete/visibility/rename/fork/transfer/publish/Make-public-and-publish/create) now use a **quiet** reload (`reloadReposQuietly`) that updates the list without ever overwriting a success confirmation with a transient list-refresh error.

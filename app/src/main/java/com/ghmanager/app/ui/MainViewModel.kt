@@ -13,6 +13,8 @@ import com.ghmanager.app.data.repository.GithubRepository
 import com.ghmanager.app.data.repository.HistoryRepository
 import com.ghmanager.app.data.repository.TokenRepository
 import com.ghmanager.app.security.SaveLocationStore
+import com.ghmanager.app.security.ThemeStore
+import com.ghmanager.app.ui.theme.ThemeMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,11 +37,15 @@ class MainViewModel(
     private val tokenRepo: TokenRepository,
     private val githubRepo: GithubRepository,
     private val historyRepo: HistoryRepository,
-    private val saveLocationStore: SaveLocationStore
+    private val saveLocationStore: SaveLocationStore,
+    private val themeStore: ThemeStore
 ) : ViewModel() {
 
     val tokens = tokenRepo.tokens
     val activeTokenId = tokenRepo.activeTokenId
+
+    private val _themeMode = MutableStateFlow(ThemeMode.SYSTEM)
+    val themeMode: StateFlow<ThemeMode> = _themeMode.asStateFlow()
 
     private val _defaultSaveUri = MutableStateFlow<String?>(null)
     val defaultSaveUri: StateFlow<String?> = _defaultSaveUri.asStateFlow()
@@ -79,12 +85,20 @@ class MainViewModel(
 
     init {
         viewModelScope.launch {
+            _themeMode.value = themeStore.getMode()
             _defaultSaveUri.value = saveLocationStore.getDefaultUri()
             tokenRepo.refresh()
             applyActiveToken()
             tokenRepo.activeTokenId.collect {
                 // reactive: when active token changes, reload
             }
+        }
+    }
+
+    fun setThemeMode(mode: ThemeMode) {
+        viewModelScope.launch {
+            themeStore.setMode(mode)
+            _themeMode.value = mode
         }
     }
 

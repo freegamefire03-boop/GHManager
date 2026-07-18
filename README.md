@@ -5,11 +5,11 @@ Personal Access Tokens (PATs). Built with Clean Architecture / MVVM, encrypted
 token storage, and precise API error handling.
 
 ## Status
-Active development — core engine working and **verified on-device** (v0.3.2-alpha,
-versionCode 5). UI is deliberately minimal (wireframe layouts, no custom theming) per
-the Core-Logic-First approach.
+Active development — core engine working and **verified on-device** (v0.3.3-alpha,
+versionCode 6). R8-optimized release build (1.88 MB). Dark theme support (System/Dark/Light toggle).
 
 ## Features
+- **Dark theme**: GitHub-inspired dark palette (`#0D1117` bg, `#161B22` surface, `#2F81F7` accent). System/Dark/Light toggle in Settings. Follows phone default on first launch.
 - **Multi-token management**: add several GitHub PATs (each under a user-defined
   name), stored encrypted at rest via `EncryptedSharedPreferences`.
 - **Global token switcher**: dropdown in the top app bar switches the active
@@ -36,12 +36,14 @@ the Core-Logic-First approach.
 - **Bulletproof error handling**: every API call parses the HTTP/API response;
   token scope/permission errors are detected and reported explicitly
   (e.g. "requires 'delete_repo' scope").
+- **R8-optimized release build**: minified + resource-shrunk APK (~1.88 MB vs ~18 MB debug) with baseline profiles for faster cold starts.
 
 ## Tech Stack
-- Kotlin, Jetpack Compose (Material 3)
+- Kotlin, Jetpack Compose (Material 3), DayNight theming
 - MVVM + Koin for DI
 - Retrofit + OkHttp (Bearer auth injected per active token)
-- Room (history + action log) + EncryptedSharedPreferences (tokens)
+- Room (history + action log) + EncryptedSharedPreferences (tokens + theme preference)
+- R8 minification + resource shrinking + baseline profiles (PGO)
 - Gradle wrapper (AGP 8.5, Kotlin 1.9.24, compileSdk 34)
 
 ## Setup / Run
@@ -57,13 +59,17 @@ app/src/main/java/com/ghmanager/app/
   data/remote/    API models, Retrofit service, error parser
   data/local/     Room DB, entities, DAOs
   data/repository/ GithubRepository, TokenRepository, HistoryRepository
-  security/       TokenStore (EncryptedSharedPreferences)
+  security/       TokenStore (EncryptedSharedPreferences), ThemeStore
   ui/             MainViewModel, MainScreen, screens/*, components/*
+  ui/theme/       AppTheme, ThemeMode enum, dark/light color schemes
   di/             Koin module
   MainActivity, GHManagerApplication
+app/proguard-rules.pro  R8 keep rules (Compose lifecycle, coroutines)
+app/src/main/baseline-prof.txt  ART profile for PGO
 ```
 
 ## Known Issues / TODO
+- `android:allowBackup="false"` — tokens and clone history are **not** backed up to the cloud. On a true reinstall (uninstall → install), all data is lost. In-place updates (`adb install -r`) with the same signing key preserve data.
 - Clone saves an **extracted folder** (not a full git clone). The default save
   location is chosen on first clone (SAF picker) and can be changed in Settings.
 - Settings is a dialog (no separate route yet).

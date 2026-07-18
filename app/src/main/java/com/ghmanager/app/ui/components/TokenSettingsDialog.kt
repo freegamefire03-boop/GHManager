@@ -1,11 +1,14 @@
 package com.ghmanager.app.ui.components
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -19,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ghmanager.app.ui.MainViewModel
+import com.ghmanager.app.ui.theme.ThemeMode
 import kotlinx.coroutines.launch
 
 @Composable
@@ -30,6 +34,7 @@ fun TokenSettingsDialog(
 ) {
     val tokens by viewModel.tokens.collectAsStateWithLifecycle()
     val isBusy by viewModel.isBusy.collectAsStateWithLifecycle()
+    val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
 
     var name by remember { mutableStateOf("") }
@@ -40,6 +45,23 @@ fun TokenSettingsDialog(
         title = { Text("Manage Tokens") },
         text = {
             Column {
+                Text("Theme (follows phone default unless changed):", modifier = Modifier.padding(bottom = 4.dp))
+                Row(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+                    ThemeMode.entries.forEach { mode ->
+                        val selected = themeMode == mode
+                        TextButton(
+                            onClick = { viewModel.setThemeMode(mode) },
+                            modifier = Modifier.weight(1f).padding(horizontal = 2.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                                contentColor = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        ) {
+                            Text(mode.name.lowercase().replaceFirstChar { it.uppercase() })
+                        }
+                    }
+                }
+
                 Text("Stored tokens (encrypted):", modifier = Modifier.padding(bottom = 4.dp))
                 tokens.forEach { tok ->
                     androidx.compose.foundation.layout.Row(

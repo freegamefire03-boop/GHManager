@@ -1,0 +1,24 @@
+# Baseline Profile for GHManager.
+# Human-readable ART profile rules (profman format). These tell ART which
+# methods to ahead-of-time compile at install, improving startup and
+# interaction smoothness. Covers the critical user journeys: app launch ->
+# MainScreen -> tabs (Create/History/REPOS) -> Settings -> repo action sheet.
+# ProfileInstaller applies this on sideloaded (non-Play) installs.
+#
+# Syntax: HSPL <class> -> <method>(<params>)<return>   : hot method (compile)
+# Comments start with '#'.
+
+HSPL com.ghmanager.app.MainActivity -> onCreate(android.os.Bundle)
+HSPL com.ghmanager.app.ui.MainScreenKt -> MainScreen(androidx.compose.runtime.Composer?, kotlin.Int)
+HSPL com.ghmanager.app.ui.screens.ExistingReposTabKt -> ExistingReposTab(com.ghmanager.app.ui.MainViewModel, androidx.compose.runtime.Composer?, kotlin.Int)
+HSPL com.ghmanager.app.ui.screens.CreateRepoTabKt -> CreateRepoTab(com.ghmanager.app.ui.MainViewModel, androidx.compose.runtime.Composer?, kotlin.Int)
+HSPL com.ghmanager.app.ui.screens.HistoryTabKt -> HistoryTab(com.ghmanager.app.ui.MainViewModel, androidx.compose.runtime.Composer?, kotlin.Int)
+HSPL com.ghmanager.app.ui.components.RepoActionsSheetKt -> RepoActionsSheet(com.ghmanager.app.data.remote.model.GithubRepo, com.ghmanager.app.ui.MainViewModel, kotlin.Function0, androidx.compose.runtime.Composer?, kotlin.Int)
+HSPL com.ghmanager.app.ui.components.TokenSettingsDialogKt -> TokenSettingsDialog(com.ghmanager.app.ui.MainViewModel, kotlin.String?, kotlin.Function0, kotlin.Function0, androidx.compose.runtime.Composer?, kotlin.Int)
+HSPL com.ghmanager.app.ui.MainViewModel -> init()
+HSPL com.ghmanager.app.ui.MainViewModel -> applyActiveToken()
+HSPL com.ghmanager.app.ui.MainViewModel -> reloadAll()
+HSPL com.ghmanager.app.ui.MainViewModel -> setThemeMode(com.ghmanager.app.ui.theme.ThemeMode)
+HSPL com.ghmanager.app.security.ThemeStore -> getMode()
+HSPL com.ghmanager.app.security.ThemeStore -> setMode(com.ghmanager.app.ui.theme.ThemeMode)
+

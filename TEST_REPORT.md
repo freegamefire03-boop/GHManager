@@ -241,9 +241,33 @@ is shown verbatim to the user.
   unexercised. Low risk.
 
 ## H. Recommendation
-v0.3.2-alpha is **verified working on-device** for all core paths (clone, visibility,
-publish-request, delete-with-countdown). No code defect blocks release. Optional hardening:
+v0.3.3-alpha is **verified working on-device** for all core paths (clone, visibility,
+publish-request, delete-with-countdown). Dark theme and R8-optimized release build confirmed.
+No code defect blocks release. Optional hardening:
 (1) optimistic removal of deleted repo from the list to avoid the brief stale-render in L8.7;
 (2) add `contentDescription`/`testTag` hooks permanently (currently added for testability —
 harmless to keep). Rename/Fork/Transfer can be closed by manual on-device taps or accepting
 the API-level validation already done.
+
+---
+
+## I. Dark Theme + Performance (v0.3.3-alpha)
+
+| # | Check | Result |
+|---|---|---|
+| I1 | Dark theme toggle (System/Dark/Light) in Settings dialog | ✅ Three buttons at top of `TokenSettingsDialog`; selection persists via `ThemeStore` (EncryptedSharedPreferences). |
+| I2 | `AppTheme` color scheme | ✅ Dark palette: `#0D1117` background, `#161B22` surface, `#2F81F7` primary. Light palette preserved. System default followed on first launch. |
+| I3 | `AndroidManifest` DayNight theme | ✅ `Theme.AppCompat.DayNight.NoActionBar` prevents white flash on launch in dark mode. |
+| I4 | Release APK size | ✅ 1.88 MB (`app/build/outputs/apk/release/GHManager-0.3.3-alpha-release.apk`) vs ~18 MB debug — R8 minification + resource shrinking working. |
+| I5 | R8 crash fix (LocalLifecycleOwner) | ✅ `proguard-rules.pro` keep rules for `androidx.lifecycle.compose.**`, `androidx.compose.runtime.**`, `androidx.compose.ui.platform.*CompositionLocals*` prevent the crash. |
+| I6 | R8 fullMode disabled | ✅ `android.enableR8.fullMode=false` in `gradle.properties` — full mode caused additional crashes; standard minification is sufficient. |
+| I7 | Baseline profile + ProfileInstaller | ✅ `baseline-prof.txt` present with ART rules; `profileinstaller:1.4.1` dependency added for PGO on first launch. |
+| I8 | `activeToken` recomposition | ✅ `remember(tokens, activeTokenId)` in `MainScreen.kt` prevents unnecessary recomputation. |
+| I9 | `LazyColumn` keying | ✅ `ExistingReposTab.kt` items keyed by `it.fullName` for stable recomposition. |
+| I10 | Release APK installed on device | ✅ `adb install` succeeded; app launches clean (`Displayed ...MainActivity: +634ms`); no FATAL EXCEPTION in logcat. |
+
+### Known Limitation — Data Persistence on Reinstall
+`android:allowBackup="false"` in the manifest means tokens (EncryptedSharedPreferences) and
+clone history (Room DB) are **not** backed up to the cloud. On a true reinstall (uninstall →
+install), all data is lost. In-place updates (`adb install -r`) with the same signing key
+(debug keystore) preserve all data. This is a documented trade-off for this personal-use app.
