@@ -4,7 +4,7 @@ All notable changes to this project are logged here, newest first.
 
 ## 2026-07-18 (v0.3.3-alpha — UI empty-state + welcome improvements)
 - Changed: **Create Repo** tab: when no token is configured, instead of a plain text line in the middle of the screen, the tab now shows a friendly "Welcome!" message at the top with an **"Add Token"** button that opens Settings directly. No more confusing error banner on first launch.
-- Changed: **History** tab: empty state message now reads "No repositories created yet. Create one from the 'Create Repo' tab." (was "No history yet.") — more helpful, placed at the top.
+- Changed: **History** tab: removed verbose header "Repositories created with this app (active token)" → now just "History". Empty state simplified to "No repos created here yet." placed at the top. Consistent with REPOS tab style.
 - Changed: `reloadAll()` in `MainViewModel` now skips the GitHub API call when no token is active, preventing the "No active token" error banner from flashing on first launch.
 
 ## 2026-07-18 (v0.3.3-alpha — dark theme + performance optimization + R8 fix)
