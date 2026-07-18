@@ -2,6 +2,10 @@
 
 All notable changes to this project are logged here, newest first.
 
+## 2026-07-18 (v0.3.3-alpha — Settings sheet redesign + crash fix)
+- Changed: **Settings / Manage Tokens** dialog fully redesigned to a dark, GitHub-style bottom-sheet layout (drag handle, "Tokens" title, THEME segmented control, SAVED token rows with ✕ delete, NEW TOKEN fields, save-location row with "Change", and Close / Add footer). Cloned from a provided HTML/CSS design. Palette: panel `#131A26`, field `#0E1420`, accent `#3B82F6`, text `#E8ECF2` / `#8A94A6`, line `#232D3D`.
+- Fixed: **App crashed (NullPointerException during layout measure) when opening Settings.** Root cause: `ModalBottomSheet` renders in a separate window that conflicts with the app's `Theme.AppCompat.DayNight` theme during inset/measure resolution. Reworked the sheet to render via the proven `Dialog` window path (bottom-aligned, rounded-top panel) so it no longer crashes. Also replaced custom `BasicTextField` + manual placeholder overlay with standard `OutlinedTextField`, and added `verticalScroll` + `weight` so long content/paths can't break the layout.
+
 ## 2026-07-18 (v0.3.3-alpha — UI empty-state + welcome improvements)
 - Changed: **Create Repo** tab: when no token is configured, instead of a plain text line in the middle of the screen, the tab now shows a friendly "Welcome!" message at the top with an **"Add Token"** button that opens Settings directly. No more confusing error banner on first launch.
 - Changed: **History** tab: removed verbose header "Repositories created with this app (active token)" → now just "History". Empty state simplified to "No repos created here yet." placed at the top. Consistent with REPOS tab style.
