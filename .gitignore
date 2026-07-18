@@ -27,6 +27,10 @@ lic_log4.txt
 # UI automator dumps (device debugging artifacts)
 ui*.xml
 logcat*.txt
+s.xml
+crash*.txt
+c.txt
+full_crash.txt
 
 # Downloaded SDK tooling (not part of codebase)
 cmdtools.zip

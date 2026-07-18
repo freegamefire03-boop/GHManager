@@ -19,8 +19,11 @@ android {
     buildTypes {
         release {
             signingConfig signingConfigs.getByName("debug")
-            minifyEnabled true
-            shrinkResources true
+            // NOTE: R8 minification breaks Compose text measurement in this app
+            // (NullPointerException in AndroidParagraphIntrinsics when opening the
+            // settings dialog). Disabled until a targeted keep-rule fix is found.
+            minifyEnabled false
+            shrinkResources false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
