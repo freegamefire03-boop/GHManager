@@ -148,6 +148,10 @@ class MainViewModel(
     fun reloadAll() {
         val tokenId = tokenRepo.activeTokenId.value
         loadHistory(tokenId)
+        if (tokenId == null) {
+            _existingRepos.value = emptyList()
+            return
+        }
         viewModelScope.launch {
             _isBusy.value = true
             when (val res = githubRepo.getRepos()) {

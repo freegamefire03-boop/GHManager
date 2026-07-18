@@ -2,6 +2,11 @@
 
 All notable changes to this project are logged here, newest first.
 
+## 2026-07-18 (v0.3.3-alpha — UI empty-state + welcome improvements)
+- Changed: **Create Repo** tab: when no token is configured, instead of a plain text line in the middle of the screen, the tab now shows a friendly "Welcome!" message at the top with an **"Add Token"** button that opens Settings directly. No more confusing error banner on first launch.
+- Changed: **History** tab: empty state message now reads "No repositories created yet. Create one from the 'Create Repo' tab." (was "No history yet.") — more helpful, placed at the top.
+- Changed: `reloadAll()` in `MainViewModel` now skips the GitHub API call when no token is active, preventing the "No active token" error banner from flashing on first launch.
+
 ## 2026-07-18 (v0.3.3-alpha — dark theme + performance optimization + R8 fix)
 - Added: GitHub-inspired **dark theme** (`#0D1117` background, `#161B22` surface, `#2F81F7` primary accent). `ThemeMode` enum (SYSTEM/DARK/LIGHT) persisted via `ThemeStore` (EncryptedSharedPreferences). Default = SYSTEM (follows phone setting). Settings dialog has a 3-button theme toggle (System/Dark/Light) at the top.
 - Changed: `AndroidManifest` theme set to `Theme.AppCompat.DayNight.NoActionBar` to prevent a white flash on launch when the phone is in dark mode.

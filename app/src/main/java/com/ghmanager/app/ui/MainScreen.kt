@@ -204,7 +204,7 @@ fun MainScreen(viewModel: MainViewModel = koinViewModel()) {
                     modifier = Modifier.fillMaxSize()
                 ) { page ->
                     when (page) {
-                        0 -> CreateRepoTab(viewModel)
+                        0 -> CreateRepoTab(viewModel, onOpenSettings = { settingsOpen = true })
                         1 -> HistoryTab(viewModel)
                         2 -> ExistingReposTab(viewModel)
                     }

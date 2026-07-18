@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -33,7 +34,12 @@ fun HistoryTab(viewModel: MainViewModel) {
             modifier = Modifier.padding(16.dp)
         )
         if (history.isEmpty()) {
-            Text("No history yet.", modifier = Modifier.padding(16.dp))
+            Text(
+                "No repositories created yet. Create one from the \"Create Repo\" tab.",
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
         LazyColumn {
             items(history) { item ->
