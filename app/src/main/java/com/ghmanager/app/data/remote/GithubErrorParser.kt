@@ -48,6 +48,7 @@ object GithubErrorParser {
         val scopeError = when {
             code == 401 -> true
             code == 403 && (text.contains("scope") || text.contains("permission") || text.contains("forbidden")) -> true
+            code == 422 && (text.contains("scope") || text.contains("permission") || text.contains("delete_repo") || text.contains("requires")) -> true
             text.contains("resource not accessible") -> true
             else -> false
         }

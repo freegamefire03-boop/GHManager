@@ -217,6 +217,8 @@ class MainViewModel(
                         description = repo.description,
                         isPrivate = repo.isPrivate,
                         cloneUrl = repo.cloneUrl,
+                        defaultBranch = repo.defaultBranch,
+                        hasPages = repo.hasPages,
                         tokenId = tokenRepo.activeTokenId.value ?: ""
                     )
                     historyRepo.recordCreatedRepo(entity)
@@ -316,7 +318,13 @@ class MainViewModel(
         viewModelScope.launch {
             _isBusy.value = true
             val owner = repo.owner?.login ?: repo.fullName.substringBefore("/")
-            val branch = repo.defaultBranch.ifBlank { "main" }
+            val branch = repo.defaultBranch
+            if (branch.isBlank()) {
+                historyRepo.logAction(ActionLogEntity(repo.fullName, "PUBLISH_PAGES", tokenId = tokenRepo.activeTokenId.value ?: "", success = false, message = "Unknown default branch"))
+                showMessage("Cannot publish: default branch is unknown for this repo.", true)
+                _isBusy.value = false
+                return@launch
+            }
             when (val res = githubRepo.enablePages(owner, repo.name, branch)) {
                 is ApiResult.Success -> {
                     historyRepo.logAction(ActionLogEntity(repo.fullName, "PUBLISH_PAGES", tokenId = tokenRepo.activeTokenId.value ?: "", success = true))

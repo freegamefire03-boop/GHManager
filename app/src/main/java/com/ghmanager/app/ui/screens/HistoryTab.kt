@@ -44,6 +44,8 @@ fun HistoryTab(viewModel: MainViewModel) {
                         isPrivate = item.isPrivate,
                         fullName = item.fullName,
                         cloneUrl = item.cloneUrl,
+                        defaultBranch = item.defaultBranch,
+                        hasPages = item.hasPages,
                         owner = com.ghmanager.app.data.remote.model.Owner(login = item.owner)
                     )
                 }

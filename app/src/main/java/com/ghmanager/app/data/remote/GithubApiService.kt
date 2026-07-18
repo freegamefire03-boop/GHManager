@@ -25,18 +25,12 @@ interface GithubApiService {
     @GET("user/repos?per_page=100&sort=updated")
     suspend fun getCurrentUserRepos(): Response<List<GithubRepo>>
 
-    @GET("users/{username}/repos?per_page=100&sort=updated")
-    suspend fun getUserRepos(@Path("username") username: String): Response<List<GithubRepo>>
+    @GET("user/repos?per_page=100&sort=updated")
+    suspend fun getCurrentUserReposPage(@retrofit2.http.Query("page") page: Int): Response<List<GithubRepo>>
 
     @POST("user/repos")
     @Headers("Accept: application/vnd.github+json")
     suspend fun createRepo(@Body body: CreateRepoRequest): Response<GithubRepo>
-
-    @GET("repos/{owner}/{repo}")
-    suspend fun getRepo(
-        @Path("owner") owner: String,
-        @Path("repo") repo: String
-    ): Response<GithubRepo>
 
     @DELETE("repos/{owner}/{repo}")
     suspend fun deleteRepo(

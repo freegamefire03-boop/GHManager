@@ -18,6 +18,8 @@ data class RepoHistoryEntity(
     val description: String?,
     val isPrivate: Boolean,
     val cloneUrl: String,
+    val defaultBranch: String = "main",
+    val hasPages: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
     val tokenId: String
 )

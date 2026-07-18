@@ -77,7 +77,24 @@ class GithubRepository {
     }
 
     suspend fun getCurrentUser(): ApiResult<GithubUser> = serviceCall { getCurrentUser() }
-    suspend fun getRepos(): ApiResult<List<GithubRepo>> = serviceCall { getCurrentUserRepos() }
+
+    suspend fun getRepos(): ApiResult<List<GithubRepo>> {
+        val all = mutableListOf<GithubRepo>()
+        var page = 1
+        while (true) {
+            val pageResult = serviceCall { getCurrentUserReposPage(page) }
+            when (pageResult) {
+                is ApiResult.Success -> {
+                    val batch = pageResult.data
+                    all.addAll(batch)
+                    if (batch.size < 100) break
+                    page++
+                }
+                is ApiResult.Error -> return pageResult
+            }
+        }
+        return ApiResult.Success(all)
+    }
     suspend fun createRepo(req: CreateRepoRequest): ApiResult<GithubRepo> = serviceCall { createRepo(req) }
     suspend fun deleteRepo(owner: String, repo: String): ApiResult<Unit> = serviceCall { deleteRepo(owner, repo) }
     suspend fun updateRepo(owner: String, repo: String, body: RenameRepoRequest): ApiResult<GithubRepo> =

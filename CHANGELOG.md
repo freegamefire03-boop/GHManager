@@ -2,6 +2,13 @@
 
 All notable changes to this project are logged here, newest first.
 
+## 2026-07-18 (v0.3.2-alpha — test-report fixes F1-F5)
+- Fixed (F1): 422 responses are now recognized as scope/permission errors when the body references a scope term (scope/permission/delete_repo/requires), so users get a helpful "requires '<scope>' scope" hint instead of a generic "Validation failed".
+- Fixed (F2): History-tab repos now carry their `default_branch` and `has_pages` flags, so cloning/publishing from History uses the correct branch and "Open Published Page" appears when applicable.
+- Cleaned up (F3): removed two unused Retrofit endpoints (`getUserRepos`, `getRepo`).
+- Fixed (F4): "Publish to GitHub Pages" now uses the repo's actual default branch and refuses (with a clear error) when the default branch is unknown, instead of silently assuming `main`.
+- Fixed (F5): repo listing now paginates (100/page) so accounts with more than 100 repos are fully loaded.
+
 ## 2026-07-17 (v0.3.1-alpha — clone reliability fixes)
 - Fixed: Clone/download could hang forever or fail silently — the network download and zip extraction now run on `Dispatchers.IO` instead of the main thread (was risking ANR / NetworkOnMainThreadException).
 - Fixed: The repo archive is now streamed straight to a cache file instead of being buffered fully in memory via `.bytes()` (prevents OOM / hangs on larger repos). Temp file is deleted after extraction.
