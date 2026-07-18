@@ -30,12 +30,14 @@ fun HistoryTab(viewModel: MainViewModel) {
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            "Repositories created with this app (active token)",
-            modifier = Modifier.padding(16.dp)
+            if (history.isEmpty()) "History"
+            else "History (${history.size})",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
         )
         if (history.isEmpty()) {
             Text(
-                "No repositories created yet. Create one from the \"Create Repo\" tab.",
+                "No repos created here yet.",
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
