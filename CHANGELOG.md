@@ -2,6 +2,10 @@
 
 All notable changes to this project are logged here, newest first.
 
+## 2026-07-18 (v0.3.2-alpha — HOTFIX: launch crash)
+- Fixed: App crashed on launch ("opens then closes immediately") with `IllegalStateException: Room cannot verify the data integrity`. Cause: the F2 change added columns to `RepoHistoryEntity` (schema change) but the Room database version was not bumped. Bumped `AppDatabase` version 1 -> 2; `fallbackToDestructiveMigration()` wipes and rebuilds the local DB on upgrade (History is cleared on first launch of this version — expected for this personal app).
+- Verified on device via ADB: launches cleanly (`Displayed ...MainActivity`), no crash, process stays alive.
+
 ## 2026-07-18 (v0.3.2-alpha — test-report fixes F1-F5)
 - Fixed (F1): 422 responses are now recognized as scope/permission errors when the body references a scope term (scope/permission/delete_repo/requires), so users get a helpful "requires '<scope>' scope" hint instead of a generic "Validation failed".
 - Fixed (F2): History-tab repos now carry their `default_branch` and `has_pages` flags, so cloning/publishing from History uses the correct branch and "Open Published Page" appears when applicable.
